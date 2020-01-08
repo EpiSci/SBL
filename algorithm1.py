@@ -231,7 +231,7 @@ class POMDP():
         currentState = startingState
         t = []
         j = 0
-        while j < len(SDE)
+        while j < len(SDE):
             a = SDE[j]
 
             #Perform a random action instead of the SDE action
@@ -477,8 +477,8 @@ def test2():
     alpha = 1
     epsilon = 1
     E = POMDP(range(4), O, A, T_ml, Omega_ml, alpha, epsilon)
-
     
+       
 
 
 test2()
