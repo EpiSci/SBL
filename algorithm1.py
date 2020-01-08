@@ -3,6 +3,7 @@ import copy
 import random
 from scipy.stats import dirichlet
 import numpy as np
+import os
 
 
 class POMDP():
@@ -44,52 +45,75 @@ class POMDP():
         return self.A
 
     # returns the probability distribution of what the state is if SDE m is successful, starting with startingDistribution in the POMDP environment
-    def getSDEDistribution(self, m, startingDistribution=[]):
+    def getSDEDistribution(self, m):
 
-        if not startingDistribution:
-            stateDistribution = [(1/len(self.S)) for i in range(len(self.S))]
-        else:
-            stateDistribution = startingDistribution
+        # if not startingDistribution:
+        #     stateDistribution = [(1/len(self.S)) for i in range(len(self.S))]
+        # else:
+        #     stateDistribution = startingDistribution
+        finalStateDistribution = [0 for i in range(len(self.S))]
 
+        for startingState in self.S:
+            # print("************** looking at state " + str(startingState) + " ************************")
+
+            # stateDistribution = [(1/len(self.S)) for i in range(len(self.S))]
+            stateDistribution = [0 for i in range(len(self.S))]
+            stateDistribution[startingState] = 1
+
+            for s in self.S:
+                # chance of seeing the first observation in m
+                stateDistribution[s] = stateDistribution[s] * self.Omega(s)[m[0]][1]
+                # print("self.Omega(s)[m[0]][1] " + str(self.Omega(s)[m[0]][1]))
+            index = 1
+
+            # total = sum(stateDistribution)
+            # normalize the distribution
+            # if total != 0:
+            #     for s in self.S:
+            #         stateDistribution[s] = stateDistribution[s] / total
+
+            # print(stateDistribution) 
+            newStateDistribution = copy.deepcopy(stateDistribution)
+            # for each of the observation-action pairs in m
+            while index < len(m):
+                # create a zero list for the new state distributions
+                newStateDistribution = [0 for i in range(len(self.S))]
+                # for each of the states and transitions, find the chance of going to the new state and making the observation in m
+                # note thate m[index] is the action and m[index+1] is the observation
+                for s in self.S:
+                    for transition in self.T(s, m[index]):
+                        (newState, chance) = transition
+                        # print("Transitioning from " + str(s) + " with action " + str(m[index]) + " to state " + str(newState) + " with a chance of " + str(chance))
+
+                        newStateDistribution[newState] = newStateDistribution[newState] + (stateDistribution[s] * chance * self.Omega(newState)[m[index+1]][1])
+                        # print("newStateDistribution " + str(newStateDistribution))
+                        # print("----------------------------------")
+                        # print("self.Omega(newState)[m[index+1]][1] " + str(self.Omega(newState)[m[index+1]][1]))
+                for s in self.S:
+                    stateDistribution[s] = newStateDistribution[s]
+
+
+                index = index + 2
+
+            finalStateDistribution[startingState] = sum(newStateDistribution)
+
+        # # normalize the distribution
+        # total = sum(stateDistribution)
+        # for s in self.S:
+        #     stateDistribution[s] = stateDistribution[s] / total
+
+        # print("unnormalized final dist " + str(finalStateDistribution))
+        # normalize the distribution
+        total = sum(finalStateDistribution)
         for s in self.S:
-            # chance of seeing the first observation in m
-            stateDistribution[s] = stateDistribution[s] * self.Omega(s)[m[0]][1]
-            # print("self.Omega(s)[m[0]][1] " + str(self.Omega(s)[m[0]][1]))
+            finalStateDistribution[s] = finalStateDistribution[s] / total
 
-        # total = sum(stateDistribution)
-        # # normalize the distribution
-        # for s in self.S:
-        #     stateDistribution[s] = stateDistribution[s] / total
-
-        index = 1
-        newStateDistribution = []
-        # for each of the observation-action pairs in m
-        while index < len(m):
-            # create a zero list for the new state distributions
-            newStateDistribution = [0 for i in range(len(self.S))]
-            # for each of the states and transitions, find the chance of going to the new state and making the observation in m
-            # note thate m[index] is the action and m[index+1] is the observation
-            for s in self.S:
-                for transition in self.T(s, m[index]):
-                    (newState, chance) = transition
-                    newStateDistribution[newState] = newStateDistribution[newState] + (stateDistribution[s] * chance * self.Omega(newState)[m[index+1]][1])
-                    print("newStateDistribution " + str(newStateDistribution))
-                    print("----------------------------------")
-                    print("self.Omega(newState)[m[index+1]][1] " + str(self.Omega(newState)[m[index+1]][1]))
-            for s in self.S:
-                stateDistribution[s] = newStateDistribution[s]
-            index = index + 2
-
-        # # normalize the distribution
-        # total = sum(stateDistribution)
-        # for s in self.S:
-        #     stateDistribution[s] = stateDistribution[s] / total
-
-        return stateDistribution
+        return finalStateDistribution
 
     # P(m'| m,a) required for Algorithm 1, returns the probability of being in the same state dictated by m_prime vs when m and a are performed
     def getSDEConditionalProbability(self, m, a, m_prime):
         m_dist = self.getSDEDistribution(m)
+        # print(m_dist)
         # create a zero list for the new state distributions
         newStateDistribution = [0 for i in range(len(self.S))]
         for s in self.S:
@@ -98,12 +122,20 @@ class POMDP():
                         newStateDistribution[newState] = newStateDistribution[newState] + (m_dist[s] * chance)
 
         # since it was given that m and a were successful, normalize this distribution
-        total = sum(newStateDistribution)
-        for s in self.S:
-            newStateDistribution[s] = newStateDistribution[s] / total
+        # total = sum(newStateDistribution)
+        # for s in self.S:
+        #     newStateDistribution[s] = newStateDistribution[s] / total
 
+        # print("m and action a distribution: " + str(newStateDistribution))
         # now with this distribution perform the experiment m_prime
-        final_dist = self.getSDEDistribution(m_prime, newStateDistribution)
+        m_prime_dist = self.getSDEDistribution(m_prime)
+
+        print("m_prime: " + str(m_prime))
+        print("newStateDistribution: " + str(newStateDistribution))
+        print("m_prime_dist: " + str(m_prime_dist))
+
+        final_dist = [a*b for a,b in zip(newStateDistribution, m_prime_dist)]
+        # print(final_dist)
 
         return sum(final_dist)
 
@@ -137,6 +169,7 @@ class POMDP():
         # print("final_dist is " + str(final_dist))
 
         # return sum(final_dist)
+
 
     #Returns an observation from the current state, as dependent upon epsilon
     def getObservation(self, currentState):
