@@ -173,7 +173,7 @@ class POMDP():
 
     #Returns an observation from the current state, as dependent upon epsilon
     def getObservation(self, currentState):
-        likelyObservation = Omega_ml[currentState]
+        likelyObservation = self.Omega_ml[currentState]
         if random.random() < self.epsilon:
             #Successfully performed the most likely observation
             o = likelyObservation
@@ -187,7 +187,7 @@ class POMDP():
 
     #Returns the next state (as dependent upon the transition function and alpha), given the current state and an action 
     def getNextState(self, currentState, action):
-        likelyTransition = T_ml[currentState][action]
+        likelyTransition = self.T_ml[currentState][action]
         if random.random() < self.alpha:
             #Successfully performed the most likely transition
             nextState = likelyTransition
@@ -229,8 +229,11 @@ class POMDP():
         #iterate through the SDE's actions (which are odd indexes) and perform those actions, returning the sequence of actions and observations along the way
         #Note that SDE starts with an observation
         currentState = startingState
+        o = self.getObservation(currentState)
         t = []
-        j = 0
+        #append the initial observation to the trajectory
+        t.append(o)
+        j = 1
         while j < len(SDE):
             a = SDE[j]
 
@@ -271,7 +274,7 @@ class POMDP():
         currentState = startingState
 
         fullT = []
-        for i in range(numSDEs):
+        for i in range(1,numSDEs+1):
             o = self.getObservation(currentState)
 
             #Get model states m that have corresponding outcome sequences that begin with the current observation
@@ -285,12 +288,13 @@ class POMDP():
             random.shuffle(matching)
             randSDE = matching[0]
 
+            print("randSDE: " + str(randSDE))
+            print("starting state: " + str(currentState))
 
             (t, resultingState) = self.performSDE(currentState, randSDE, explore)
-            #The trajectory must start with the initial observation since the Algorithm adds a random action at the end
-            t.insert(0, o)
+            print("resulting state: " + str(resultingState))
 
-            if i < numSDEs:
+            if i < numSDEs:#need to do minus one since range goes from 
                 #a <- random action
                 actionList = list(copy.deepcopy(self.A))
                 random.shuffle(actionList)
@@ -300,7 +304,7 @@ class POMDP():
                 newState = self.getNextState(resultingState, randAction)
                 currentState = newState
 
-                fullT = fullT + t + a
+                fullT = fullT + t + [randAction]
             else:
                 fullT = fullT + t
 
@@ -308,61 +312,100 @@ class POMDP():
         beliefStates = np.ones((1,len(modelStates))) / len(modelStates) #Create a uniform distribution
         #Note: gammas is a 3 dimensional vector where the first dimension is m, second dimension is a, and third dimension is m'
         gammas = np.ones((len(modelStates), len(self.A), len(modelStates))) #create an array of hyperparamters initialized to ones
-        iteration = 0
-        while iteration < len(t) - 1:
-            o = fullT[iteration]
-            a = fullT[iteration + 1]
+        iteration = 1 #Start at index 1 of fullT because the (a,o) pairs must be the observation o AFTER taking action a
+        while iteration < len(fullT) - 1:
+            a = fullT[iteration]
+            o = fullT[iteration + 1] #o is the observation that occurs after taking action a
 
             #Equation 3: Update gammas (Dirichlet hyperparameters)
 
-            #etta is assumed to be 1/(# of states that have the first observation o), i.e. 1/(# of times indicator function is 1)
-            #Thus, etta is only dependent upon m
-            count = 0
-            for ms in modelStates:
-                if ms == 0:
-                    count = count + 1
-            etta = 1.0/(count)
+            # #etta is assumed to be 1/(# of states that have the first observation o), i.e. 1/(# of times indicator function is 1)
+            # #Thus, etta is only dependent upon m'
+            # count = 0
+            # for ms in modelStates:
+            #     if ms[0] == o:
+            #         count = count + 1
+            # etta = 1.0/(count * len(modelStates))
 
             newGammas = copy.deepcopy(gammas)
             m_iter = 0
-            a_iter = 0
-            m_prime_iter = 0
-            #For each tau value...
+
+            #Need to iterate twice through each gamma value.
+            #The first time (the loop below) is used to determine etta
+            ettaSum = 0
             while m_iter < len(modelStates):
-                while a_iter < len(self.A):
+                    # a_iter = 0
+                    a_iter = a
+                    # while a_iter < len(self.A):
+                    m_prime_iter = 0
                     while m_prime_iter < len(modelStates):
-                        if modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new tau will be updated
+                        if modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new gamma will be updated
                             # quantiles = np.zeros((1,beliefStates.size))
                             # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
                             # quantiles[0][m_prime_iter] = 1
-
-
-                            newGammas[m_iter][a_iter][m_prime_iter] = gammas[m_iter][a_iter][m_prime_iter] + (etta * dirichlet.mean(gammas[m_prime][a_iter]) * beliefStates[0][m_iter])
+                            ettaSum = ettaSum + (dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])
                         m_prime_iter = m_prime_iter + 1
-                    a_iter = a_iter + 1
-                m_iter = m_iter + 1
+                    # a_iter = a_iter + 1
+                    m_iter = m_iter + 1
+
+            etta = 1/ettaSum
+            m_iter = 0
+
+            #The second loop through each gamma is used to update each gamma (now that the value of etta is known)
+            while m_iter < len(modelStates):
+                    # a_iter = 0
+                    a_iter = a
+                    # while a_iter < len(self.A):
+                    m_prime_iter = 0
+                    while m_prime_iter < len(modelStates):
+                        if modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new gamma will be updated
+                            # quantiles = np.zeros((1,beliefStates.size))
+                            # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
+                            # quantiles[0][m_prime_iter] = 1
+                            newGammas[m_iter][a_iter][m_prime_iter] = gammas[m_iter][a_iter][m_prime_iter] + (etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])
+                        m_prime_iter = m_prime_iter + 1
+                    # a_iter = a_iter + 1
+                    m_iter = m_iter + 1
 
             gammas = copy.deepcopy(newGammas)
 
             #Equation 2 - needs to be processed after Equation 3 as the belief states use the transition probabilities T at time t (not t-1)
             newBeliefStates = np.zeros((1,beliefStates.size))
-            m_prime = 0        
+            m_prime = 0
+
             while m_prime < beliefStates.size:
                 if modelStates[m_prime][0] == o: #indicator function will be non-zero -> new belief state will be non-zero
                     summation = 0
-                    sigma = 0
-                    while sigma < beliefStates.size:
+                    m_sigma = 0
+                    while m_sigma < beliefStates.size:
                         # quantiles = np.zeros((1,beliefStates.size))
                         # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
                         # quantiles[0][sigma] = 1
-                        summation = summation + (dirichlet.mean(gammas[sigma][a]) * beliefStates[0][sigma])
+                        summation = summation + (dirichlet.mean(gammas[m_sigma][a])[m_prime] * beliefStates[0][m_sigma])
+                        m_sigma = m_sigma + 1
                     newBeliefStates[0][m_prime] = summation
                 m_prime = m_prime + 1
 
-            beliefStates = copy.deepCopy(newBeliefStates)
+            #Need to normalize the belief states as the agent must be in one of the model states
+            b_iter = 0
+            summation = 0
+            while b_iter < len(newBeliefStates[0]):
+                summation = summation + newBeliefStates[0][b_iter]
+                b_iter = b_iter + 1
+
+            b_iter = 0
+            while b_iter < len(newBeliefStates[0]):
+                newBeliefStates[0][b_iter] = newBeliefStates[0][b_iter] / summation
+                b_iter = b_iter + 1
+
+            beliefStates = copy.deepcopy(newBeliefStates)
 
             iteration = iteration + 2
-
+        print("fullT: " + str(fullT))
+        print("final gammas: ")
+        print(gammas)
+        print("Transition Function for m = state III, a = x: " + str(dirichlet.mean(gammas[2][0])))
+        print("final beliefStates " + str(beliefStates))
 
 
 
@@ -478,7 +521,13 @@ def test2():
     epsilon = 1
     E = POMDP(range(4), O, A, T_ml, Omega_ml, alpha, epsilon)
     
-       
+    #Do test where model states are a perfect correlation to actual states (as determined in the paper)
+    modelStates = [[0,1,1,0,0],[0,1,1,0,1],[1,0,0],[1,0,1]]
+    numSDEs = 1
+    explore = 0
+    startingState = 1 #the starting state in the actual environment, not the model environment
+    E.performExperiment(modelStates, numSDEs, explore, startingState)
+    
 
 
 test2()
