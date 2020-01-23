@@ -309,9 +309,17 @@ class POMDP():
                 fullT = fullT + t
 
         #learnTransitions()
+        # #------------------------NEED TO CHANGE BELIEF STATES BACK TO WHAT IT WAS------------------------------
+        # beliefStates = np.array([[0,0,0.5,0.5]])
         beliefStates = np.ones((1,len(modelStates))) / len(modelStates) #Create a uniform distribution
         #Note: gammas is a 3 dimensional vector where the first dimension is m, second dimension is a, and third dimension is m'
         gammas = np.ones((len(modelStates), len(self.A), len(modelStates))) #create an array of hyperparamters initialized to ones
+        
+        # #Testing purposes  - DELETE later
+        # gammas[1][1][3] = 100
+        # gammas[0][1][2] = 100 
+
+
         iteration = 1 #Start at index 1 of fullT because the (a,o) pairs must be the observation o AFTER taking action a
         while iteration < len(fullT) - 1:
             a = fullT[iteration]
@@ -404,7 +412,15 @@ class POMDP():
         print("fullT: " + str(fullT))
         print("final gammas: ")
         print(gammas)
-        print("Transition Function for m = state III, a = x: " + str(dirichlet.mean(gammas[2][0])))
+        print("Transition Function for m = 0, a = x: " + str(dirichlet.mean(gammas[0][0])))
+        print("Transition Function for m = 0, a = y: " + str(dirichlet.mean(gammas[0][1])))
+        print("Transition Function for m = 1, a = x: " + str(dirichlet.mean(gammas[1][0])))
+        print("Transition Function for m = 1, a = y: " + str(dirichlet.mean(gammas[1][1])))
+        print("Transition Function for m = 2, a = x: " + str(dirichlet.mean(gammas[2][0])))
+        print("Transition Function for m = 2, a = y: " + str(dirichlet.mean(gammas[2][1])))
+        print("Transition Function for m = 3, a = x: " + str(dirichlet.mean(gammas[3][0])))
+        print("Transition Function for m = 3, a = y: " + str(dirichlet.mean(gammas[3][1])))
+        # print("Transition Function for m = state III, a = x: " + str(dirichlet.mean(gammas[2][0])))
         print("final beliefStates " + str(beliefStates))
 
 
@@ -417,7 +433,7 @@ def test1():
     # the set of actions
     A = range(2)
     #  the most likely state to transition to given T_ml[state][action]
-    T_ml = [[1, 2], [1, 3], [0, 0], [2, 2]]
+    T_ml = [[1, 2], [1, 3], [0, 0], [2, 1]]
     #  the most likely observation given you're in that state
     Omega_ml = [0, 0, 1, 1]
     alpha = 1
@@ -514,7 +530,7 @@ def test2():
     # the set of actions
     A = range(2)
     #  the most likely state to transition to given T_ml[state][action]
-    T_ml = [[1, 2], [1, 3], [0, 0], [2, 2]]
+    T_ml = [[1, 2], [1, 3], [0, 0], [2, 1]]
     #  the most likely observation given you're in that state
     Omega_ml = [0, 0, 1, 1]
     alpha = 1
@@ -523,9 +539,11 @@ def test2():
     
     #Do test where model states are a perfect correlation to actual states (as determined in the paper)
     modelStates = [[0,1,1,0,0],[0,1,1,0,1],[1,0,0],[1,0,1]]
-    numSDEs = 1
+    # modelStates = [[0],[1]]
+    # modelStates = [[0],[1,0,0],[1,0,1]]
+    numSDEs = 500
     explore = 0
-    startingState = 1 #the starting state in the actual environment, not the model environment
+    startingState = 3 #the starting state in the actual environment, not the model environment
     E.performExperiment(modelStates, numSDEs, explore, startingState)
     
 
