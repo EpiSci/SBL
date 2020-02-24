@@ -309,21 +309,36 @@ class POMDP():
                 fullT = fullT + t
 
         #learnTransitions()
-        # #------------------------NEED TO CHANGE BELIEF STATES BACK TO WHAT IT WAS------------------------------
-        # beliefStates = np.array([[0,0,0.5,0.5]])
+
+        #Pre-process fullT so that when the agent performs an SDE, then the first observation is replaced 
+        #by a label corresponding to that model state (NewLabel = modelStateNum + (numObservations))
+        newTrajectory = copy.deepcopy(fullT)
+        for sde in modelStates:
+            modelStateNum = modelStates.index(sde)
+            iteration = 0
+            while iteration < (len(fullT)) - len(sde):
+                if fullT[iteration:iteration+len(sde)] == sde:
+                    #change the observation to a new model state
+                    newTrajectory[iteration] = modelStateNum + len(self.O)
+                iteration = iteration + 2
+        fullT = newTrajectory
+
         beliefStates = np.ones((1,len(modelStates))) / len(modelStates) #Create a uniform distribution
         #Note: gammas is a 3 dimensional vector where the first dimension is m, second dimension is a, and third dimension is m'
         gammas = np.ones((len(modelStates), len(self.A), len(modelStates))) #create an array of hyperparamters initialized to ones
-        
-        # #Testing purposes  - DELETE later
-        # gammas[1][1][3] = 100
-        # gammas[0][1][2] = 100 
-
 
         iteration = 1 #Start at index 1 of fullT because the (a,o) pairs must be the observation o AFTER taking action a
         while iteration < len(fullT) - 1:
             a = fullT[iteration]
-            o = fullT[iteration + 1] #o is the observation that occurs after taking action a
+            processedO = fullT[iteration + 1] #o is the observation that occurs after taking action a
+
+            o = processedO
+            #See if we need to unprocess the observation (i.e. if it corresponds to an SDE)
+            #Will need to get the first observation of that corresponding SDE
+            if (processedO >= len(self.O)):
+                sdeNum = processedO - len(self.O)
+                o = modelStates[sdeNum][0]
+
 
             #Equation 3: Update gammas (Dirichlet hyperparameters)
 
@@ -347,7 +362,11 @@ class POMDP():
                     # while a_iter < len(self.A):
                     m_prime_iter = 0
                     while m_prime_iter < len(modelStates):
-                        if modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new gamma will be updated
+                        if processedO >= len(self.O):
+                            #We have an SDE -> only update the model state that corresponds to that SDE number
+                            if m_prime_iter == processedO - len(self.O):
+                                ettaSum = ettaSum + (dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])
+                        elif modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new gamma will be updated
                             # quantiles = np.zeros((1,beliefStates.size))
                             # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
                             # quantiles[0][m_prime_iter] = 1
@@ -366,10 +385,25 @@ class POMDP():
                     # while a_iter < len(self.A):
                     m_prime_iter = 0
                     while m_prime_iter < len(modelStates):
-                        if modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new gamma will be updated
+                        if processedO >= len(self.O):
+                            #We have an SDE -> only update the model state that corresponds to that SDE number
+                            if m_prime_iter == processedO - len(self.O):
+                                newGammas[m_iter][a_iter][m_prime_iter] = gammas[m_iter][a_iter][m_prime_iter] + (etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])    
+                                if (m_iter == 3) and (a_iter == 1):
+                                    print("iteration: " + str(iteration))
+                                    print("Processed Observation: " + str(processedO))
+                                    print("Target model state in the transition: " + str(m_prime_iter))
+                                    print("Belief State: " + str(beliefStates[0]))
+                                    print("Value added to gamma: " + str((etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])))
+                                    print("New Gammas: " + str(newGammas[m_iter][a_iter]))                            
+                        elif modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new gamma will be updated
                             # quantiles = np.zeros((1,beliefStates.size))
                             # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
                             # quantiles[0][m_prime_iter] = 1
+                            # if (m_iter == 3) and (a_iter == 1):
+                            #     print("Target model state in the transition: " + str(m_prime_iter))
+                            #     print("Value added to gamma: " + str((etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])))
+                            #     print("New Gammas (before the addition): " + str(newGammas[m_iter][a_iter]))
                             newGammas[m_iter][a_iter][m_prime_iter] = gammas[m_iter][a_iter][m_prime_iter] + (etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])
                         m_prime_iter = m_prime_iter + 1
                     # a_iter = a_iter + 1
@@ -379,20 +413,42 @@ class POMDP():
 
             #Equation 2 - needs to be processed after Equation 3 as the belief states use the transition probabilities T at time t (not t-1)
             newBeliefStates = np.zeros((1,beliefStates.size))
-            m_prime = 0
+            
+            #See if the agent successfully performed an SDE
+            if (processedO > len(self.O)):
+                #Agent performed an SDE successfully, so we will set the new belief state to reflect the successful SDE
+                stateOfSDE = processedO - len(self.O)
+                #Find number of belief states that match the current observation
+                count = 0
+                for ms in modelStates:
+                    if ms[0] == modelStates[stateOfSDE][0]:
+                        count = count + 1
 
-            while m_prime < beliefStates.size:
-                if modelStates[m_prime][0] == o: #indicator function will be non-zero -> new belief state will be non-zero
-                    summation = 0
-                    m_sigma = 0
-                    while m_sigma < beliefStates.size:
-                        # quantiles = np.zeros((1,beliefStates.size))
-                        # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
-                        # quantiles[0][sigma] = 1
-                        summation = summation + (dirichlet.mean(gammas[m_sigma][a])[m_prime] * beliefStates[0][m_sigma])
-                        m_sigma = m_sigma + 1
-                    newBeliefStates[0][m_prime] = summation
-                m_prime = m_prime + 1
+                numNotMatching = len(modelStates) - count
+
+                beta = (1 - self.alpha) / (len(modelStates) - 1)
+                #update the non-SDE states that still have the same first observation
+                for i in range(len(modelStates)):
+                    if i == stateOfSDE:
+                        newBeliefStates[0][i] = self.alpha + (beta * (numNotMatching/count))
+                    elif modelStates[i][0] == modelStates[stateOfSDE][0]:
+                        newBeliefStates[0][i] = beta + (beta * (numNotMatching/count))
+            
+            else:
+                m_prime = 0
+
+                while m_prime < beliefStates.size:
+                    if modelStates[m_prime][0] == o: #indicator function will be non-zero -> new belief state will be non-zero
+                        summation = 0
+                        m_sigma = 0
+                        while m_sigma < beliefStates.size:
+                            # quantiles = np.zeros((1,beliefStates.size))
+                            # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
+                            # quantiles[0][sigma] = 1
+                            summation = summation + (dirichlet.mean(gammas[m_sigma][a])[m_prime] * beliefStates[0][m_sigma])
+                            m_sigma = m_sigma + 1
+                        newBeliefStates[0][m_prime] = summation
+                    m_prime = m_prime + 1
 
             #Need to normalize the belief states as the agent must be in one of the model states
             b_iter = 0
@@ -541,7 +597,7 @@ def test2():
     modelStates = [[0,1,1,0,0],[0,1,1,0,1],[1,0,0],[1,0,1]]
     # modelStates = [[0],[1]]
     # modelStates = [[0],[1,0,0],[1,0,1]]
-    numSDEs = 500
+    numSDEs = 100
     explore = 0
     startingState = 3 #the starting state in the actual environment, not the model environment
     E.performExperiment(modelStates, numSDEs, explore, startingState)
