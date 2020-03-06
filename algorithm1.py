@@ -288,23 +288,29 @@ class POMDP():
             random.shuffle(matching)
             randSDE = matching[0]
 
-            print("randSDE: " + str(randSDE))
-            print("starting state: " + str(currentState))
+            # print("randSDE: " + str(randSDE))
+            # print("starting state: " + str(currentState))
 
             (t, resultingState) = self.performSDE(currentState, randSDE, explore)
-            print("resulting state: " + str(resultingState))
+            # print("resulting state: " + str(resultingState))
 
-            if i < numSDEs:#need to do minus one since range goes from 
+            if i < numSDEs: 
                 #a <- random action
-                actionList = list(copy.deepcopy(self.A))
-                random.shuffle(actionList)
-                randAction = actionList[0]
 
-                #performAction()
-                newState = self.getNextState(resultingState, randAction)
-                currentState = newState
+                if i > (numSDEs*(3/4)) or random.random() < 0.25:
+                    actionList = list(copy.deepcopy(self.A))
+                    random.shuffle(actionList)
+                    randAction = actionList[0]
 
-                fullT = fullT + t + [randAction]
+                    #performAction()
+                    newState = self.getNextState(resultingState, randAction)
+                    currentState = newState
+
+                    fullT = fullT + t + [randAction]
+                else:
+                    fullT = fullT + t[0:-1] 
+                    #only add t[0:-1] since t start and ends with an observation, but we need the last item in t to be an action
+                    currentState = resultingState
             else:
                 fullT = fullT + t
 
@@ -389,13 +395,13 @@ class POMDP():
                             #We have an SDE -> only update the model state that corresponds to that SDE number
                             if m_prime_iter == processedO - len(self.O):
                                 newGammas[m_iter][a_iter][m_prime_iter] = gammas[m_iter][a_iter][m_prime_iter] + (etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])    
-                                if (m_iter == 3) and (a_iter == 1):
-                                    print("iteration: " + str(iteration))
-                                    print("Processed Observation: " + str(processedO))
-                                    print("Target model state in the transition: " + str(m_prime_iter))
-                                    print("Belief State: " + str(beliefStates[0]))
-                                    print("Value added to gamma: " + str((etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])))
-                                    print("New Gammas: " + str(newGammas[m_iter][a_iter]))                            
+                                # if (m_iter == 3) and (a_iter == 1):
+                                    # print("iteration: " + str(iteration))
+                                    # print("Processed Observation: " + str(processedO))
+                                    # print("Target model state in the transition: " + str(m_prime_iter))
+                                    # print("Belief State: " + str(beliefStates[0]))
+                                    # print("Value added to gamma: " + str((etta * dirichlet.mean(gammas[m_iter][a_iter])[m_prime_iter] * beliefStates[0][m_iter])))
+                                    # print("New Gammas: " + str(newGammas[m_iter][a_iter]))                            
                         elif modelStates[m_prime_iter][0] == o:#indicator function will be non-zero -> new gamma will be updated
                             # quantiles = np.zeros((1,beliefStates.size))
                             # #Evaluate the dirichlet using a one-hot vector representation at the dirichlet
@@ -597,7 +603,7 @@ def test2():
     modelStates = [[0,1,1,0,0],[0,1,1,0,1],[1,0,0],[1,0,1]]
     # modelStates = [[0],[1]]
     # modelStates = [[0],[1,0,0],[1,0,1]]
-    numSDEs = 100
+    numSDEs = 1000
     explore = 0
     startingState = 3 #the starting state in the actual environment, not the model environment
     E.performExperiment(modelStates, numSDEs, explore, startingState)
