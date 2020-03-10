@@ -47,7 +47,7 @@ class sPOMDPModelExample1():
         self.O_S = ["square", "diamond"] #Observation Set
         self.A_S = ["x", "y"] #Action Set
         self.State_Size = 4
-        self.Alpha = 0.9
+        self.Alpha = 0.99
         self.Epsilon = 0.99
         sPOMDPNode.O_S = self.O_S
         sPOMDPNode.A_S = self.A_S
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     Current_Observation = env.reset()
 
     #Generate Full Transitions
-    SDE_Num = 2
+    SDE_Num = 100
     explore = 0.1
     Full_Transition = [Current_Observation]
 
@@ -123,10 +123,90 @@ if __name__ == "__main__":
             Full_Transition.append(random_action)
             Full_Transition.append(Current_Observation)
 
-    #Learn Transitions
+    #Get SDE Transitions
     SDE_List = env.get_SDE()
 
-    #Generate initial transition matrixes and intial belief state.
+    #Detect Successful Transitions
+    Informed_Transition = Full_Transition.copy()
+    for Transition_Idx in range(len(Full_Transition)):
+        for SDE_Idx, SDE in enumerate(SDE_List):
+            if len(SDE) <= len(Full_Transition)-Transition_Idx:
+                for EO_Idx, Expected_Observation in enumerate(SDE):
+                    if(Expected_Observation == Full_Transition[Transition_Idx + EO_Idx]):
+                        if EO_Idx == len(SDE)-1:
+                            Informed_Transition[Transition_Idx] = SDE_Idx
+                    else:
+                        break
+
+    #The Code Below is a little hacky as it needs to be updated to work with any observation or action set.
+    #Learn Transitions
+    #Initiate Belief State
+    Belief_State = np.ones(len(SDE_List))/len(SDE_List)
+    Belief_Mask = np.zeros(len(SDE_List))
+    Observation = Informed_Transition[0]
+    if (Observation == "square") or (Observation == "diamond"):
+        if Observation == "square":
+            Belief_Mask[0:2] = 1
+        else:
+             Belief_Mask[2:4] = 1
+    else:
+        Belief_Mask[Observation] = 1
+    Belief_State = Belief_State*Belief_Mask
+    Belief_State = Belief_State/np.sum(Belief_State)
+
+    #Initiate Transition Matrixes
+    X_Count = np.ones((4,4))
+    Y_Count = np.ones((4,4))
+
+    iterations = 100000
+    for _ in range(iterations):
+        X_Row_Sum = X_Count.sum(axis=1)
+        Action_X = X_Count / X_Row_Sum[:, np.newaxis]
+        Y_Row_Sum = Y_Count.sum(axis=1)
+        Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
+        X_Count = np.ones((4,4))
+        Y_Count = np.ones((4,4))
+
+        for Transition_Idx in range(len(Informed_Transition)//2):
+            #Belief State
+            Belief_Mask = np.zeros(len(SDE_List))
+            Observation = Informed_Transition[Transition_Idx*2+2]
+            Action = Informed_Transition[Transition_Idx*2+1]
+            Previous_Belief_State = Belief_State.copy()
+            Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
+
+            if Action == "x":
+                Belief_State = np.dot(Belief_State, Action_X)
+            if Action == "y":
+                Belief_State = np.dot(Belief_State, Action_Y)
+
+            if (Observation == "square") or (Observation == "diamond"):
+                if Observation == "square":
+                    Belief_Mask[0:2] = 1
+                else:
+                    Belief_Mask[2:4] = 1
+            else:
+                Belief_Mask[Observation] = 1
+            Belief_State = Belief_State*Belief_Mask
+            Belief_State = Belief_State/np.sum(Belief_State)
+            #print(Belief_State)
+            #print(Action)
+            #print(Observation)
+
+            #Updated Transition
+            Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :])
+            if Action == "x":
+                X_Count = X_Count + Belief_Count
+            #    X_Row_Sum = X_Count.sum(axis=1)
+            #    Action_X = X_Count / X_Row_Sum[:, np.newaxis]
+            if Action == "y":
+                Y_Count = Y_Count + Belief_Count
+            #    Y_Row_Sum = Y_Count.sum(axis=1)
+            #    Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
+    print(Action_X)
+    print(Action_Y)
+
+"""     #Generate initial transition matrixes and intial belief state.
     Initial_Observation = Full_Transition[-1]
     State_Observations = []
     Belief_State = []
@@ -168,4 +248,4 @@ if __name__ == "__main__":
         print(Transition_Matrix)
         print(Belief_State)
 
-    #TODO: Update the Dirichlet Distribution
+    #TODO: Update the Dirichlet Distribution """
