@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     #Generate Full Transitions
     SDE_Num = 100
-    explore = 0.1
+    explore = 0.5
     Full_Transition = [Current_Observation]
 
     #Exectue SDE_Num amount of SDE.
@@ -140,32 +140,60 @@ if __name__ == "__main__":
 
     #The Code Below is a little hacky as it needs to be updated to work with any observation or action set.
     #Learn Transitions
-    #Initiate Belief State
-    Belief_State = np.ones(len(SDE_List))/len(SDE_List)
-    Belief_Mask = np.zeros(len(SDE_List))
-    Observation = Informed_Transition[0]
-    if (Observation == "square") or (Observation == "diamond"):
-        if Observation == "square":
-            Belief_Mask[0:2] = 1
-        else:
-             Belief_Mask[2:4] = 1
-    else:
-        Belief_Mask[Observation] = 1
-    Belief_State = Belief_State*Belief_Mask
-    Belief_State = Belief_State/np.sum(Belief_State)
 
     #Initiate Transition Matrixes
     X_Count = np.ones((4,4))
     Y_Count = np.ones((4,4))
-
     iterations = 100000
     for _ in range(iterations):
+        print(_)
+
         X_Row_Sum = X_Count.sum(axis=1)
         Action_X = X_Count / X_Row_Sum[:, np.newaxis]
         Y_Row_Sum = Y_Count.sum(axis=1)
         Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
-        X_Count = np.ones((4,4))
-        Y_Count = np.ones((4,4))
+
+        SDE_Belief_Mask = []
+        for SDE_idx, SDE in enumerate(SDE_List):
+            SDE_Chance = np.zeros(4)
+            if SDE[0] == "square":
+                SDE_Chance[0:2] = 0.5
+            else:
+                SDE_Chance[2:4] = 0.5
+            Trans = np.ones((4,4))*0.25
+            for action_idx in range(len(SDE)//2):
+                Action = SDE[action_idx*2+1]
+                Observation = SDE[action_idx*2+2]
+                if Action == "x":
+                    Tmp_Transition =  Action_X
+                if Action == "y":
+                    Tmp_Transition =  Action_Y
+                Trans = np.dot(Trans, Tmp_Transition)
+                if Observation == "square":
+                    Trans[:,2:4] = 0
+                else:
+                    Trans[:,0:2] = 0
+                SDE_Chance = SDE_Chance * np.sum(Trans, axis=1)
+            SDE_Chance[SDE_idx] = 0.99**2
+            SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
+            SDE_Belief_Mask.append(SDE_Chance)
+
+        #Initiate Belief State
+        Belief_State = np.ones(len(SDE_List))/len(SDE_List)
+        Belief_Mask = np.zeros(len(SDE_List))
+        Observation = Informed_Transition[0]
+        if (Observation == "square") or (Observation == "diamond"):
+            if Observation == "square":
+                Belief_Mask[0:2] = 1
+            else:
+                Belief_Mask[2:4] = 1
+        else:
+            Belief_Mask = SDE_Belief_Mask[Observation]
+        Belief_State = Belief_State*Belief_Mask
+        Belief_State = Belief_State/np.sum(Belief_State)
+                
+        X_Count = np.zeros((4,4))
+        Y_Count = np.zeros((4,4))
 
         for Transition_Idx in range(len(Informed_Transition)//2):
             #Belief State
@@ -186,7 +214,7 @@ if __name__ == "__main__":
                 else:
                     Belief_Mask[2:4] = 1
             else:
-                Belief_Mask[Observation] = 1
+                Belief_Mask = SDE_Belief_Mask[Observation]
             Belief_State = Belief_State*Belief_Mask
             Belief_State = Belief_State/np.sum(Belief_State)
             #print(Belief_State)
