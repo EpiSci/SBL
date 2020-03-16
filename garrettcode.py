@@ -99,54 +99,55 @@ if __name__ == "__main__":
     Current_Observation = env.reset()
 
     #Generate Full Transitions
-    SDE_Num = 100
-    explore = 0.5
+    SDE_Num = 1000
+    explore = 0.15
     Full_Transition = [Current_Observation]
 
-    #Exectue SDE_Num amount of SDE.
-    for num in range(0,SDE_Num):
-        Matching_SDE = env.get_SDE(Current_Observation)
-        Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
-        Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
-        for action in Chosen_SDE_Actions:
-            if np.random.random() < explore:
+    X_Count = np.ones((4,4))
+    Y_Count = np.ones((4,4))
+    iterations = 1000
+    for _ in range(iterations):
+        print(_)
+
+        #Exectue SDE_Num amount of SDE.
+        for num in range(0,SDE_Num):
+            Matching_SDE = env.get_SDE(Current_Observation)
+            Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+            Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
+            for action in Chosen_SDE_Actions:
+                if np.random.random() < explore:
+                    Current_Observation, random_action = env.random_step()
+                    Full_Transition.append(random_action)
+                    Full_Transition.append(Current_Observation)
+                    break
+                else:
+                    Current_Observation = env.step(action)
+                    Full_Transition.append(action)
+                    Full_Transition.append(Current_Observation)
+            if num+1 < SDE_Num:
                 Current_Observation, random_action = env.random_step()
                 Full_Transition.append(random_action)
                 Full_Transition.append(Current_Observation)
-                break
-            else:
-                Current_Observation = env.step(action)
-                Full_Transition.append(action)
-                Full_Transition.append(Current_Observation)
-        if num+1 < SDE_Num:
-            Current_Observation, random_action = env.random_step()
-            Full_Transition.append(random_action)
-            Full_Transition.append(Current_Observation)
 
-    #Get SDE Transitions
-    SDE_List = env.get_SDE()
+        #Get SDE Transitions
+        SDE_List = env.get_SDE()
 
-    #Detect Successful Transitions
-    Informed_Transition = Full_Transition.copy()
-    for Transition_Idx in range(len(Full_Transition)):
-        for SDE_Idx, SDE in enumerate(SDE_List):
-            if len(SDE) <= len(Full_Transition)-Transition_Idx:
-                for EO_Idx, Expected_Observation in enumerate(SDE):
-                    if(Expected_Observation == Full_Transition[Transition_Idx + EO_Idx]):
-                        if EO_Idx == len(SDE)-1:
-                            Informed_Transition[Transition_Idx] = SDE_Idx
-                    else:
-                        break
+        #Detect Successful Transitions
+        Informed_Transition = Full_Transition.copy()
+        for Transition_Idx in range(len(Full_Transition)):
+            for SDE_Idx, SDE in enumerate(SDE_List):
+                if len(SDE) <= len(Full_Transition)-Transition_Idx:
+                    for EO_Idx, Expected_Observation in enumerate(SDE):
+                        if(Expected_Observation == Full_Transition[Transition_Idx + EO_Idx]):
+                            if EO_Idx == len(SDE)-1:
+                                Informed_Transition[Transition_Idx] = SDE_Idx
+                        else:
+                            break
 
-    #The Code Below is a little hacky as it needs to be updated to work with any observation or action set.
-    #Learn Transitions
+        #The Code Below is a little hacky as it needs to be updated to work with any observation or action set.
+        #Learn Transitions
 
-    #Initiate Transition Matrixes
-    X_Count = np.ones((4,4))
-    Y_Count = np.ones((4,4))
-    iterations = 100000
-    for _ in range(iterations):
-        print(_)
+        #Initiate Transition Matrixes
 
         X_Row_Sum = X_Count.sum(axis=1)
         Action_X = X_Count / X_Row_Sum[:, np.newaxis]
