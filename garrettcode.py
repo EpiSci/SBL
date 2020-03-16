@@ -108,7 +108,8 @@ if __name__ == "__main__":
     iterations = 1000
     for _ in range(iterations):
         print(_)
-
+        if _ > 0:
+            Full_Transition = [Full_Transition[-1]]
         #Exectue SDE_Num amount of SDE.
         for num in range(0,SDE_Num):
             Matching_SDE = env.get_SDE(Current_Observation)
