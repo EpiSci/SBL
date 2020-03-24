@@ -173,17 +173,17 @@ if __name__ == "__main__":
         SDE_Belief_Mask = []
         for SDE_idx, SDE in enumerate(SDE_List):
             SDE_Chance = np.zeros(4)
-            """if SDE[0] == "square":
+            if SDE[0] == "square":
                 SDE_Chance[0:2] = 0.5
             else:
-                SDE_Chance[2:4] = 0.5"""
-            for o in env.O_S:
+                SDE_Chance[2:4] = 0.5
+            """for o in env.O_S:
                 #Set equal probability for each action to occur
                 if SDE[0] == o:
                     #Figure out how many SDEs correspond to the observation
                     num_Correspond = first_Observations.count(o)
                     #Set the corresponding SDEs to 1 divided by that value
-                    SDE_Chance[(np.array(first_Observations) == SDE[0])] = 1/num_Correspond
+                    SDE_Chance[(np.array(first_Observations) == SDE[0])] = 1/num_Correspond"""
             
 
             Trans = np.ones((4,4))*0.25
@@ -196,11 +196,11 @@ if __name__ == "__main__":
                     Tmp_Transition =  Action_Y
                 Trans = np.dot(Trans, Tmp_Transition)
                 #Mask the transition matrix
-                """if Observation == "square":
+                if Observation == "square":
                     Trans[:,2:4] = 0
                 else:
-                    Trans[:,0:2] = 0"""
-                Trans[:,(np.array(first_Observations) != Observation)] = 0
+                    Trans[:,0:2] = 0
+                """Trans[:,(np.array(first_Observations) != Observation)] = 0"""
                 SDE_Chance = SDE_Chance * np.sum(Trans, axis=1)
             SDE_Chance[SDE_idx] = 0.99**2
             SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
@@ -211,19 +211,19 @@ if __name__ == "__main__":
         Belief_Mask = np.zeros(len(SDE_List))
         Observation = Informed_Transition[0]
         #If the observation is just a "simple" observation, then set the belief mask to 1 if the SDE for that state starts with that observation
-        if Observation in env.O_S:
+        """if Observation in env.O_S:
             for o in env.O_S:
                 if Observation == o:
                     Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
         else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
-            Belief_Mask = SDE_Belief_Mask[Observation]
-        """if (Observation == "square") or (Observation == "diamond"):
+            Belief_Mask = SDE_Belief_Mask[Observation]"""
+        if (Observation == "square") or (Observation == "diamond"):
             if Observation == "square":
                 Belief_Mask[0:2] = 1
             else:
                 Belief_Mask[2:4] = 1
         else:
-            Belief_Mask = SDE_Belief_Mask[Observation]"""
+            Belief_Mask = SDE_Belief_Mask[Observation]
         Belief_State = Belief_State*Belief_Mask
         Belief_State = Belief_State/np.sum(Belief_State)
                 
@@ -238,7 +238,7 @@ if __name__ == "__main__":
             Previous_Belief_State = Belief_State.copy()
             Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
 
-            """if Action == "x":
+            if Action == "x":
                 Belief_State = np.dot(Belief_State, Action_X)
             if Action == "y":
                 Belief_State = np.dot(Belief_State, Action_Y)
@@ -250,13 +250,13 @@ if __name__ == "__main__":
                     Belief_Mask[2:4] = 1
             else:
                 Belief_Mask = SDE_Belief_Mask[Observation]
-            Belief_State = Belief_State*Belief_Mask"""
-            if Observation in env.O_S:
+            Belief_State = Belief_State*Belief_Mask
+            """if Observation in env.O_S:
                 for o in env.O_S:
                     if Observation == o:
                         Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
             else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
-                Belief_Mask = SDE_Belief_Mask[Observation]
+                Belief_Mask = SDE_Belief_Mask[Observation]"""
 
 
             if np.sum(Belief_State) == 0:
