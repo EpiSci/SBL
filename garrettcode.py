@@ -100,12 +100,18 @@ if __name__ == "__main__":
 
     #Generate Full Transitions
     SDE_Num = 1000
-    explore = 0.15
+    explore = 0.05
     Full_Transition = [Current_Observation]
 
-    X_Count = np.ones((4,4))
-    Y_Count = np.ones((4,4))
-    iterations = 1000
+    X_Count = np.ones((4,4))*0.0001
+    Y_Count = np.ones((4,4))*0.0001
+    iterations = 100000
+
+    lr = 0.01
+
+    Old_X = None
+    Old_Y = None
+
     for _ in range(iterations):
         print(_)
         if _ > 0:
@@ -155,6 +161,13 @@ if __name__ == "__main__":
         Y_Row_Sum = Y_Count.sum(axis=1)
         Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
 
+        if (Old_X is not None) and (Old_Y is not None):
+            Action_X = lr*Action_X + (1-lr)*Old_X
+            Action_Y = lr*Action_Y + (1-lr)*Old_Y
+
+        Old_X = Action_X
+        Old_Y = Action_Y
+
         SDE_Belief_Mask = []
         for SDE_idx, SDE in enumerate(SDE_List):
             SDE_Chance = np.zeros(4)
@@ -194,8 +207,8 @@ if __name__ == "__main__":
         Belief_State = Belief_State*Belief_Mask
         Belief_State = Belief_State/np.sum(Belief_State)
                 
-        X_Count = np.zeros((4,4))
-        Y_Count = np.zeros((4,4))
+        X_Count = np.zeros((4,4))+0.0001
+        Y_Count = np.zeros((4,4))+0.0001
 
         for Transition_Idx in range(len(Informed_Transition)//2):
             #Belief State
@@ -218,10 +231,12 @@ if __name__ == "__main__":
             else:
                 Belief_Mask = SDE_Belief_Mask[Observation]
             Belief_State = Belief_State*Belief_Mask
+            if np.sum(Belief_State) == 0:
+                print(Informed_Transition[Transition_Idx*2-2:Transition_Idx*2+2])
+                print(Belief_State)
+                print(Action_X)
+                print(Action_Y)
             Belief_State = Belief_State/np.sum(Belief_State)
-            #print(Belief_State)
-            #print(Action)
-            #print(Observation)
 
             #Updated Transition
             Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :])
@@ -233,6 +248,7 @@ if __name__ == "__main__":
                 Y_Count = Y_Count + Belief_Count
             #    Y_Row_Sum = Y_Count.sum(axis=1)
             #    Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
+            
     print(Action_X)
     print(Action_Y)
 
