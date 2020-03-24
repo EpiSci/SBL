@@ -155,6 +155,7 @@ if __name__ == "__main__":
         Y_Row_Sum = Y_Count.sum(axis=1)
         Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
 
+        first_Observations = [item[0] for item in SDE_List]
         SDE_Belief_Mask = []
         for SDE_idx, SDE in enumerate(SDE_List):
             SDE_Chance = np.zeros(4)
@@ -162,6 +163,18 @@ if __name__ == "__main__":
                 SDE_Chance[0:2] = 0.5
             else:
                 SDE_Chance[2:4] = 0.5
+            """for o in env.O_S:
+                #Set equal probability for each action to occur
+                if SDE[0] == o:
+                    #Figure out how many SDEs correspond to the observation
+                    num_Correspond = first_Observations.count(o)
+                    #Set the corresponding SDEs to 1 divided by that value
+                    SDE_Chance[(np.array(first_Observations) == SDE[0])] = 1/num_Correspond
+
+                    #There is an issue where the belief state becomes all zeros or something like that. But this occurs rarely
+                    #Need to check this code above to see if it triggers the error
+            """
+
             Trans = np.ones((4,4))*0.25
             for action_idx in range(len(SDE)//2):
                 Action = SDE[action_idx*2+1]
@@ -171,10 +184,12 @@ if __name__ == "__main__":
                 if Action == "y":
                     Tmp_Transition =  Action_Y
                 Trans = np.dot(Trans, Tmp_Transition)
+                #Mask the transition matrix
                 if Observation == "square":
                     Trans[:,2:4] = 0
                 else:
                     Trans[:,0:2] = 0
+                """Trans[:,(np.array(first_Observations) != Observation)] = 0"""
                 SDE_Chance = SDE_Chance * np.sum(Trans, axis=1)
             SDE_Chance[SDE_idx] = 0.99**2
             SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
@@ -184,6 +199,13 @@ if __name__ == "__main__":
         Belief_State = np.ones(len(SDE_List))/len(SDE_List)
         Belief_Mask = np.zeros(len(SDE_List))
         Observation = Informed_Transition[0]
+        #If the observation is just a "simple" observation, then set the belief mask to 1 if the SDE for that state starts with that observation
+        """if Observation in env.O_S:
+            for o in env.O_S:
+                if Observation == o:
+                    Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
+        else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
+            Belief_Mask = SDE_Belief_Mask[Observation]"""
         if (Observation == "square") or (Observation == "diamond"):
             if Observation == "square":
                 Belief_Mask[0:2] = 1
