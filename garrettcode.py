@@ -40,35 +40,8 @@ class sPOMDPNode():
         else:
             return self.Other_Observations[np.random.randint(low = 0, high = len(self.Other_Observations))]
 
-#This class combines all of the nodes into a model.  This model is the one from figure 2.
-class sPOMDPModelExample1():
-    def __init__(self):
-        #Set Environment Details
-        self.O_S = ["square", "diamond"] #Observation Set
-        self.A_S = ["x", "y"] #Action Set
-        self.State_Size = 4
-        self.Alpha = 0.99
-        self.Epsilon = 0.99
-        sPOMDPNode.O_S = self.O_S
-        sPOMDPNode.A_S = self.A_S
-        sPOMDPNode.State_Size = self.State_Size
-        sPOMDPNode.Alpha = self.Alpha
-        sPOMDPNode.Epsilon = self.Epsilon
-
-        #Use Already Known SDE
-        self.SDE_Set = []
-        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[0]])
-        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[1]])
-        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
-        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1]])
-
-        #Generate States
-        self.Node_Set = []
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[3][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
-
+#This class combines all of the nodes into a model.
+class sPOMDPModelExample():
     def reset(self):
         #Select A Random Starting State
         self.Current_State = np.random.choice(self.Node_Set)
@@ -92,19 +65,77 @@ class sPOMDPModelExample1():
                     Matching_SDE.append(SDE)
             return Matching_SDE
 
+#This class extends the generic sPOMDP model. This model is the one from figure 2.
+class Example1(sPOMDPModelExample):
+        def __init__(self):
+            #Set Environment Details
+            self.O_S = ["square", "diamond"] #Observation Set
+            self.A_S = ["x", "y"] #Action Set
+            self.State_Size = 4
+            self.Alpha = 0.99
+            self.Epsilon = 0.99
+            sPOMDPNode.O_S = self.O_S
+            sPOMDPNode.A_S = self.A_S
+            sPOMDPNode.State_Size = self.State_Size
+            sPOMDPNode.Alpha = self.Alpha
+            sPOMDPNode.Epsilon = self.Epsilon
+
+            #Use Already Known SDE
+            self.SDE_Set = []
+            self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[0]])
+            self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[1]])
+            self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
+            self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1]])
+
+            #Generate States
+            self.Node_Set = []
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[3][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
+
+#This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
+class Example2(sPOMDPModelExample):
+        def __init__(self):
+            #Set Environment Details
+            self.O_S = ["square", "diamond"] #Observation Set
+            self.A_S = ["x", "y"] #Action Set
+            self.State_Size = 4
+            self.Alpha = 0.99
+            self.Epsilon = 0.99
+            sPOMDPNode.O_S = self.O_S
+            sPOMDPNode.A_S = self.A_S
+            sPOMDPNode.State_Size = self.State_Size
+            sPOMDPNode.Alpha = self.Alpha
+            sPOMDPNode.Epsilon = self.Epsilon
+
+            #Use Already Known SDE
+            self.SDE_Set = []
+            self.SDE_Set.append([self.O_S[0]])
+            self.SDE_Set.append([self.O_S[1]])
+
+            #Generate States
+            self.Node_Set = []
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
+            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
+
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    env = sPOMDPModelExample1()
+    env = Example2()
     Current_Observation = env.reset()
+
+    SDE_List = env.get_SDE()
 
     #Generate Full Transitions
     SDE_Num = 1000
     explore = 0.05
     Full_Transition = [Current_Observation]
 
-    X_Count = np.ones((4,4))*0.0001
-    Y_Count = np.ones((4,4))*0.0001
+    X_Count = np.ones((len(SDE_List),len(SDE_List)))*0.0001
+    Y_Count = np.ones((len(SDE_List),len(SDE_List)))*0.0001
     iterations = 10000
 
     lr = 0.01
@@ -172,7 +203,7 @@ if __name__ == "__main__":
 
         SDE_Belief_Mask = []
         for SDE_idx, SDE in enumerate(SDE_List):
-            SDE_Chance = np.zeros(4)
+            SDE_Chance = np.zeros(len(SDE_List))
             for o in env.O_S:
                 #Set equal probability for each action to occur
                 if SDE[0] == o:
@@ -182,7 +213,7 @@ if __name__ == "__main__":
                     SDE_Chance[(np.array(first_Observations) == SDE[0])] = 1/num_Correspond
             
 
-            Trans = np.ones((4,4))*0.25
+            Trans = np.ones((len(SDE_List),len(SDE_List)))*0.25
             for action_idx in range(len(SDE)//2):
                 Action = SDE[action_idx*2+1]
                 Observation = SDE[action_idx*2+2]
@@ -212,8 +243,8 @@ if __name__ == "__main__":
         Belief_State = Belief_State*Belief_Mask
         Belief_State = Belief_State/np.sum(Belief_State)
                 
-        X_Count = np.zeros((4,4))+0.0001
-        Y_Count = np.zeros((4,4))+0.0001
+        X_Count = np.zeros((len(SDE_List),len(SDE_List)))+0.0001
+        Y_Count = np.zeros((len(SDE_List),len(SDE_List)))+0.0001
 
         for Transition_Idx in range(len(Informed_Transition)//2):
             #Belief State
