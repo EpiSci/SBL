@@ -134,14 +134,12 @@ if __name__ == "__main__":
     explore = 0.05
     Full_Transition = [Current_Observation]
 
-    X_Count = np.ones((len(SDE_List),len(SDE_List)))*0.0001
-    Y_Count = np.ones((len(SDE_List),len(SDE_List)))*0.0001
+    Action_Count = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))*0.0001
     iterations = 10000
 
     lr = 0.01
 
-    Old_X = None
-    Old_Y = None
+    Old_Action = [None for item in env.A_S]
 
     for _ in range(iterations):
         print(_)
@@ -187,19 +185,15 @@ if __name__ == "__main__":
 
         #Initiate Transition Matrixes
 
-        X_Row_Sum = X_Count.sum(axis=1)
-        Action_X = X_Count / X_Row_Sum[:, np.newaxis]
-        Y_Row_Sum = Y_Count.sum(axis=1)
-        Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
-
+        Action_Row_Sum = Action_Count.sum(axis=2)
+        Action_Probs = np.divide(np.transpose(Action_Count,(0,2,1)), Action_Row_Sum[:,np.newaxis])
+        Action_Probs = np.transpose(Action_Probs,(0,2,1))
 
         first_Observations = [item[0] for item in SDE_List]
-        if (Old_X is not None) and (Old_Y is not None):
-            Action_X = lr*Action_X + (1-lr)*Old_X
-            Action_Y = lr*Action_Y + (1-lr)*Old_Y
+        if all(item is not None for item in Old_Action):
+            Action_Probs = lr*Action_Probs + (1-lr)*Old_Action
 
-        Old_X = Action_X
-        Old_Y = Action_Y
+        Old_Action = Action_Probs
 
         SDE_Belief_Mask = []
         for SDE_idx, SDE in enumerate(SDE_List):
@@ -217,10 +211,8 @@ if __name__ == "__main__":
             for action_idx in range(len(SDE)//2):
                 Action = SDE[action_idx*2+1]
                 Observation = SDE[action_idx*2+2]
-                if Action == "x":
-                    Tmp_Transition =  Action_X
-                if Action == "y":
-                    Tmp_Transition =  Action_Y
+                Model_Action_Idx = env.A_S.index(Action)
+                Tmp_Transition = Action_Probs[Model_Action_Idx,:,:]
                 Trans = np.dot(Trans, Tmp_Transition)
                 #Mask the transition matrix
                 Trans[:,(np.array(first_Observations) != Observation)] = 0
@@ -243,8 +235,7 @@ if __name__ == "__main__":
         Belief_State = Belief_State*Belief_Mask
         Belief_State = Belief_State/np.sum(Belief_State)
                 
-        X_Count = np.zeros((len(SDE_List),len(SDE_List)))+0.0001
-        Y_Count = np.zeros((len(SDE_List),len(SDE_List)))+0.0001
+        Action_Count = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))*0.0001
 
         for Transition_Idx in range(len(Informed_Transition)//2):
             #Belief State
@@ -254,10 +245,9 @@ if __name__ == "__main__":
             Previous_Belief_State = Belief_State.copy()
             Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
 
-            if Action == "x":
-                Belief_State = np.dot(Belief_State, Action_X)
-            if Action == "y":
-                Belief_State = np.dot(Belief_State, Action_Y)
+            
+            Model_Action_Idx = env.A_S.index(Action)
+            Belief_State = np.dot(Belief_State, Action_Probs[Model_Action_Idx,:,:])
             
             if Observation in env.O_S:
                 for o in env.O_S:
@@ -271,17 +261,11 @@ if __name__ == "__main__":
 
             #Updated Transition
             Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :])
-            if Action == "x":
-                X_Count = X_Count + Belief_Count
-            #    X_Row_Sum = X_Count.sum(axis=1)
-            #    Action_X = X_Count / X_Row_Sum[:, np.newaxis]
-            if Action == "y":
-                Y_Count = Y_Count + Belief_Count
-            #    Y_Row_Sum = Y_Count.sum(axis=1)
-            #    Action_Y = Y_Count / Y_Row_Sum[:, np.newaxis]
             
-    print(Action_X)
-    print(Action_Y)
+            Model_Action_Idx = env.A_S.index(Action)
+            Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
+            
+    print(Action_Probs)
 
 """     #Generate initial transition matrixes and intial belief state.
     Initial_Observation = Full_Transition[-1]
