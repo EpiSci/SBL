@@ -122,16 +122,13 @@ class Example2(sPOMDPModelExample):
             self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
 
 
-#The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
-if __name__ == "__main__":
-    env = Example2()
+#Algorithm 2: Active Experimentation
+def activeExperimentation(env, SDE_Num, explore):
     Current_Observation = env.reset()
 
     SDE_List = env.get_SDE()
 
     #Generate Full Transitions
-    SDE_Num = 1000
-    explore = 0.05
     Full_Transition = [Current_Observation]
 
     Action_Count = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))*0.0001
@@ -265,48 +262,12 @@ if __name__ == "__main__":
             Model_Action_Idx = env.A_S.index(Action)
             Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
             
-    print(Action_Probs)
+    return Action_Probs
 
-"""     #Generate initial transition matrixes and intial belief state.
-    Initial_Observation = Full_Transition[-1]
-    State_Observations = []
-    Belief_State = []
-    for SDE in SDE_List:
-        State_Observations.append(SDE[0])
-        if SDE[0] == Initial_Observation:
-            Belief_State.append(1)
-        else:
-            Belief_State.append(0)
-    Belief_State = Belief_State/np.sum(Belief_State)
-
-
-    #TODO: Update Transition Matrix Generation to include sub matrix identification.
-    Transition_Matrix_List = {}
-    for action in env.A_S:
-        Transition_Matrix = []
-        for SDE in SDE_List:
-            Transition = []
-            for Observation in State_Observations:
-                if SDE[1] == action:
-                    Transition.append(Observation == SDE[2])
-                else :
-                    Transition.append(1)
-            Transition = Transition/np.sum(Transition)
-            Transition_Matrix.append(Transition)
-        Transition_Matrix_List[action] = np.array(Transition_Matrix)
-
-    Reverse_Transition = np.flip(Full_Transition)
-
-    #Calculate Belief State
-    for idx in range(0, len(Reverse_Transition)-2, 2):
-        Transition_Matrix = Transition_Matrix_List[Reverse_Transition[idx+1]]
-        Belief_State = np.dot(Belief_State, np.transpose(Transition_Matrix))
-        Belief_State = np.array(Belief_State * np.char.equal(State_Observations, Reverse_Transition[idx+2]))
-        if np.sum(Belief_State) == 0:
-            Belief_State += 1
-        Belief_State = Belief_State / np.sum(Belief_State)
-        print("======================")
-        print(Transition_Matrix)
-        print(Belief_State)
-
-    #TODO: Update the Dirichlet Distribution """
+#The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
+if __name__ == "__main__":
+    env = Example2()
+    SDE_Num = 1000
+    explore = 0.05
+    probsTrans = activeExperimentation(env, SDE_Num, explore)
+    print(probsTrans)
