@@ -122,7 +122,7 @@ class Example2(sPOMDPModelExample):
             self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
 
 
-#Algorithm 2: Active Experimentation
+#Algorithm 2: Active Experimentation. Returns the belief state and transition probabilities.
 def activeExperimentation(env, SDE_Num, explore):
     Current_Observation = env.reset()
 
@@ -262,12 +262,16 @@ def activeExperimentation(env, SDE_Num, explore):
             Model_Action_Idx = env.A_S.index(Action)
             Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
             
-    return Action_Probs
+    return (Belief_State, Action_Probs)
+
+#Aglorithm 3: Approximate sPOMPDP Learning. Returns
+def approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon):
+    print("Algorithm 3")
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
     env = Example2()
     SDE_Num = 1000
     explore = 0.05
-    probsTrans = activeExperimentation(env, SDE_Num, explore)
+    (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
     print(probsTrans)
