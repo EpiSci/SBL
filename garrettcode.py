@@ -67,59 +67,79 @@ class sPOMDPModelExample():
 
 #This class extends the generic sPOMDP model. This model is the one from figure 2.
 class Example1(sPOMDPModelExample):
-        def __init__(self):
-            #Set Environment Details
-            self.O_S = ["square", "diamond"] #Observation Set
-            self.A_S = ["x", "y"] #Action Set
-            self.State_Size = 4
-            self.Alpha = 0.99
-            self.Epsilon = 0.99
-            sPOMDPNode.O_S = self.O_S
-            sPOMDPNode.A_S = self.A_S
-            sPOMDPNode.State_Size = self.State_Size
-            sPOMDPNode.Alpha = self.Alpha
-            sPOMDPNode.Epsilon = self.Epsilon
+    def __init__(self):
+        #Set Environment Details
+        self.O_S = ["square", "diamond"] #Observation Set
+        self.A_S = ["x", "y"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
 
-            #Use Already Known SDE
-            self.SDE_Set = []
-            self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[0]])
-            self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[1]])
-            self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
-            self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1]])
+        #Use Already Known SDE
+        self.SDE_Set = []
+        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[0]])
+        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[1]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1]])
 
-            #Generate States
-            self.Node_Set = []
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[3][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
+        #Generate States
+        self.Node_Set = []
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[3][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
 
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
 class Example2(sPOMDPModelExample):
-        def __init__(self):
+    def __init__(self):
+        #Set Environment Details
+        self.O_S = ["square", "diamond"] #Observation Set
+        self.A_S = ["x", "y"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set = []
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+
+        #Generate States
+        self.Node_Set = []
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
+
+#Used in Algorithm 3 code as a generic model.
+class genericModel(sPOMDPModelExample):
+    def __init__(self, observationSet,actionSet, stateSize, SDE_Set, alpha, epsilon, environmentNodes):
             #Set Environment Details
-            self.O_S = ["square", "diamond"] #Observation Set
-            self.A_S = ["x", "y"] #Action Set
-            self.State_Size = 4
-            self.Alpha = 0.99
-            self.Epsilon = 0.99
+            self.O_S = observationSet
+            self.A_S = actionSet
+            self.State_Size = stateSize
+            self.Alpha = alpha
+            self.Epsilon = epsilon
             sPOMDPNode.O_S = self.O_S
             sPOMDPNode.A_S = self.A_S
             sPOMDPNode.State_Size = self.State_Size
             sPOMDPNode.Alpha = self.Alpha
             sPOMDPNode.Epsilon = self.Epsilon
 
-            #Use Already Known SDE
-            self.SDE_Set = []
-            self.SDE_Set.append([self.O_S[0]])
-            self.SDE_Set.append([self.O_S[1]])
+            self.SDE_Set = SDE_Set
 
             #Generate States
-            self.Node_Set = []
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
-            self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
+            self.Node_Set = environmentNodes
 
 
 #Algorithm 2: Active Experimentation. Returns the belief state and transition probabilities.
@@ -139,7 +159,9 @@ def activeExperimentation(env, SDE_Num, explore):
     Old_Action = [None for item in env.A_S]
 
     for _ in range(iterations):
-        print(_)
+        if _ % 100 == 0:
+           print(_)
+
         if _ > 0:
             Full_Transition = [Full_Transition[-1]]
         #Exectue SDE_Num amount of SDE.
@@ -264,14 +286,112 @@ def activeExperimentation(env, SDE_Num, explore):
             
     return (Belief_State, Action_Probs)
 
-#Aglorithm 3: Approximate sPOMPDP Learning. Returns
-def approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon):
-    print("Algorithm 3")
+
+
+
+#Lines 6-19 of Algorithm 1. If splitting is successful, returns True and the new environment. Otherwise returns False and the previous environment.
+def trySplitBySurprise(env, Action_Probs, surpriseThresh):
+    didSplit = False
+    newEnv = env
+
+    # for action_idx, action in enumerate(env.A_S):
+    #    for state_idx, transitionSetProbs in enumerate(Action_Probs[action_idx,:,:]):
+    for m_idx, m in enumerate(env.SDE_Set):
+        for a_idx, a in enumerate(env.A_S):
+            transitionSetProbs = Action_Probs[a_idx,m_idx,:]
+            transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
+            """print("-------------")
+            print(m)
+            print(a)
+            print(transitionSetProbs)
+            print(transitionSetEntropy)
+            print("++++++++++++++")"""
+            if transitionSetEntropy > surpriseThresh: #TODO: The paper says to check if this is greater than a threshold. Would it be better if it just changed the state with the maximum entropy? At this point the algorithm has already decided to split...
+                didSplit = True
+                #Find m1_prime and m2_prime such that they match up to a first difference in observation
+                SDE_List = env.get_SDE()
+                m1_prime = []
+                m2_prime = []
+                for sde1 in SDE_List:
+                    for sde2 in SDE_List:
+                        if (sde1 != sde2) and (sde1[:-1] == sde2[:-1]):
+                            m1_prime = sde1
+                            m2_prime = sde2
+
+                if not m1_prime or not m2_prime:
+                    return (False,env) #Not sure if this case would ever occur, but if it does, return False
+               
+                m1_new = [m[0]]
+                m1_new.append(a)
+                m1_new = m1_new + m1_prime
+                m2_new = [m[0]]
+                m2_new.append(a)
+                m2_new = m2_new + m2_prime
+
+                SDE_Set_new = env.get_SDE()
+                SDE_Set_new.append(m1_new)
+                SDE_Set_new.append(m2_new)
+                SDE_Set_new.remove(m)
+                #Note: did note do line 14 of Algorithm 1 as this would add the new SDE to the SDE list.
+                #       However, the way we currently store model states is by their SDE (i.e. actions and observations)
+                #       The Collins paper stores the SDEs as only the corresponding actions
+
+                
+                newEnv = genericModel(env.O_S, env.A_S, env.State_Size, SDE_Set_new, env.Alpha, env.Epsilon, env.Node_Set)
+                return (didSplit, newEnv)
+    return (didSplit, newEnv)
+
+#TODO: Need to update this once Dirichlet distributions are determined
+def getModelEntropy(env, transitionProbs):
+    summation = 0
+    for m_idx, m in enumerate(env.SDE_Set):
+        for a_idx, a in enumerate(env.A_S):
+            transitionSetProbs = transitionProbs[a_idx,m_idx,:]
+            transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
+            #TODO: change this ratio to be the correct ratio from equation 4
+            ratio = 1/(len(env.SDE_Set) * len(env.A_S))
+            summation = transitionSetEntropy*ratio + summation
+    print(summation)
+    print(transitionProbs)
+    return summation
+
+
+#Algorithm 3: Approximate sPOMPDP Learning.
+def approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh):
+    #Initialize model
+    #TODO: Create code that can create an initial model from the provided action and observation sets, alpha, and epsilon
+    env = Example2()
+    while True:
+
+        (beliefState, probsTrans) = activeExperimentation(env, numSDEsPerExperiment, explore)
+
+        if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
+            break
+
+        (splitResult, env) = trySplitBySurprise(env, probsTrans, surpriseThresh)
+        if not splitResult:
+            break
+        # input("Done with the current iteration. Press any key to begin the next iteration.")
+        print(env.SDE_Set)
+    print(env.SDE_Set)
+
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    env = Example2()
-    SDE_Num = 1000
+    # env = Example2()
+    # SDE_Num = 10
+    # explore = 0.05
+    # (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
+    # print(probsTrans)
+
+
+    observationSet = ["square", "diamond"] #Observation Set
+    actionSet = ["x", "y"] #Action Set
+    alpha = 0.99
+    epsilon = 0.99
+
+    entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    surpriseThresh = 0.6
+    numSDEsPerExperiment = 100
     explore = 0.05
-    (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
-    print(probsTrans)
+    approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
