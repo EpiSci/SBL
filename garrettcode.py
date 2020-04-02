@@ -121,6 +121,34 @@ class Example2(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
 
+#This class extends the generic sPOMDP model. This model is the from the environment from Figure 3, but only with 3 known SDEs (rose, volcano, or nothing)
+class Example3(sPOMDPModelExample):
+    def __init__(self):
+        #Set Environment Details
+        self.O_S = ["rose", "volcano","nothing"] #Observation Set
+        self.A_S = ["f", "b", "t"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set = []
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+        self.SDE_Set.append([self.O_S[2]])
+
+        #Generate States
+        self.Node_Set = []
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 3, self.A_S[1]: 2, self.A_S[2]: 0})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 3, self.A_S[2]: 1})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 1, self.A_S[2]: 3})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 0, self.A_S[2]: 2})) #state 3
+
 #Used in Algorithm 3 code as a generic model.
 class genericModel(sPOMDPModelExample):
     def __init__(self, observationSet,actionSet, stateSize, SDE_Set, alpha, epsilon, environmentNodes):
@@ -228,7 +256,7 @@ def activeExperimentation(env, SDE_Num, explore):
                     SDE_Chance[(np.array(first_Observations) == SDE[0])] = 1/num_Correspond
             
 
-            Trans = np.ones((len(SDE_List),len(SDE_List)))*0.25
+            Trans = np.ones((len(SDE_List),len(SDE_List)))/len(SDE_List)
             for action_idx in range(len(SDE)//2):
                 Action = SDE[action_idx*2+1]
                 Observation = SDE[action_idx*2+2]
@@ -322,6 +350,9 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
             if transitionSetEntropy > surpriseThresh: #TODO: The paper says to check if this is greater than a threshold. Would it be better if it just changed the state with the maximum entropy? At this point the algorithm has already decided to split...
                 didSplit = True
                 #Find m1_prime and m2_prime such that they match up to a first difference in observation
+                #TODO: Would it be better to find all possible m1_primes and m2_primes, and then choose the m1_prime and m2_prime that correspond to the smallest entropy?
+                #       The motivation for this would be that the smaller entropy would indicate a transition that is closer to being fully learned
+                #       This would then mean the SDE used to distinguish the two states would be using a transition that the algorithm previously identified
                 SDE_List = env.get_SDE()
                 m1_prime = []
                 m2_prime = []
@@ -370,10 +401,9 @@ def getModelEntropy(env, transitionProbs):
 
 
 #Algorithm 3: Approximate sPOMPDP Learning.
-def approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh):
+def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh):
     #Initialize model
-    #TODO: Create code that can create an initial model from the provided action and observation sets, alpha, and epsilon
-    env = Example2()
+
     while True:
 
         (beliefState, probsTrans) = activeExperimentation(env, numSDEsPerExperiment, explore)
@@ -397,14 +427,10 @@ if __name__ == "__main__":
     (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
     print(probsTrans)"""
 
-    
-    observationSet = ["square", "diamond"] #Observation Set
-    actionSet = ["x", "y"] #Action Set
-    alpha = 0.99
-    epsilon = 0.99
+    env = Example3()
 
     entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0.6
     numSDEsPerExperiment = 1000
     explore = 0.05
-    approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
+    approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
