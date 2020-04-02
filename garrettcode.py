@@ -157,6 +157,8 @@ def activeExperimentation(env, SDE_Num, explore):
     lr = 0.01
 
     Old_Action = [None for item in env.A_S]
+    previousTransitions = []
+    stopCount = 0
 
     for _ in range(iterations):
         if _ % 100 == 0:
@@ -283,6 +285,17 @@ def activeExperimentation(env, SDE_Num, explore):
             
             Model_Action_Idx = env.A_S.index(Action)
             Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
+
+        if np.size(previousTransitions) > 0:
+            delta = np.max(np.abs(previousTransitions - Action_Probs))
+            if delta < 0.0005:
+                stopCount = stopCount + 1
+            else:
+                stopCount = 0
+            if stopCount >= 10:
+                break
+
+        previousTransitions = Action_Probs
             
     return (Belief_State, Action_Probs)
 
@@ -378,13 +391,13 @@ def approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon, entropy
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    # env = Example2()
-    # SDE_Num = 10
-    # explore = 0.05
-    # (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
-    # print(probsTrans)
+    """env = Example2()
+    SDE_Num = 10
+    explore = 0.05
+    (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
+    print(probsTrans)"""
 
-
+    
     observationSet = ["square", "diamond"] #Observation Set
     actionSet = ["x", "y"] #Action Set
     alpha = 0.99
@@ -392,6 +405,6 @@ if __name__ == "__main__":
 
     entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0.6
-    numSDEsPerExperiment = 100
+    numSDEsPerExperiment = 1000
     explore = 0.05
     approximateSPOMDPLearning(actionSet, observationSet, alpha, epsilon, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
