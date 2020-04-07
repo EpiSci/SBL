@@ -89,16 +89,16 @@ class Example1(sPOMDPModelExample):
 
         #Generate States
         self.Node_Set = []
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[3][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 2})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 3})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
 
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
 class Example2(sPOMDPModelExample):
     def __init__(self):
         #Set Environment Details
-        self.O_S = ["square", "diamond"] #Observation Set
+        self.O_S = ["diamond", "square"] #Observation Set
         self.A_S = ["x", "y"] #Action Set
         self.State_Size = 4
         self.Alpha = 0.99
@@ -116,10 +116,10 @@ class Example2(sPOMDPModelExample):
 
         #Generate States
         self.Node_Set = []
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 2})) #state 0
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 3})) #state 1
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 0})) #state 2
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 1})) #state 3
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 2})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 3})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
 
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 3, but only with 3 known SDEs (rose, volcano, or nothing)
 class Example3(sPOMDPModelExample):
@@ -144,10 +144,10 @@ class Example3(sPOMDPModelExample):
 
         #Generate States
         self.Node_Set = []
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[0][0], Action_Dictionary = {self.A_S[0]: 3, self.A_S[1]: 2, self.A_S[2]: 0})) #state 0
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[1][0], Action_Dictionary = {self.A_S[0]: 2, self.A_S[1]: 3, self.A_S[2]: 1})) #state 1
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 0, self.A_S[1]: 1, self.A_S[2]: 3})) #state 2
-        self.Node_Set.append(sPOMDPNode(Observation = self.SDE_Set[2][0], Action_Dictionary = {self.A_S[0]: 1, self.A_S[1]: 0, self.A_S[2]: 2})) #state 3
+        self.Node_Set.append(sPOMDPNode(Observation = "rose", Action_Dictionary = {"f": 3, "b": 2, "t": 0})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "volcano", Action_Dictionary = {"f": 2, "b": 3, "t": 1})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 0, "b": 1, "t": 3})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 1, "b": 0, "t": 2})) #state 3
 
 #Used in Algorithm 3 code as a generic model.
 class genericModel(sPOMDPModelExample):
@@ -186,11 +186,14 @@ def activeExperimentation(env, SDE_Num, explore):
 
     Old_Action = [None for item in env.A_S]
     previousTransitions = []
+    Action_Probs = np.array([])
     stopCount = 0
 
     for _ in range(iterations):
         if _ % 100 == 0:
            print(_)
+           # if np.any(Action_Probs):
+           #     print(Action_Probs)s
 
         if _ > 0:
             Full_Transition = [Full_Transition[-1]]
@@ -313,6 +316,13 @@ def activeExperimentation(env, SDE_Num, explore):
             
             Model_Action_Idx = env.A_S.index(Action)
             Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
+            """print(Full_Transition)
+            print(Informed_Transition)
+            print(Action_Count)
+            print(Previous_Belief_State)
+            print(Action)
+            print(Observation)
+            1/0"""
 
         if np.size(previousTransitions) > 0:
             delta = np.max(np.abs(previousTransitions - Action_Probs))
@@ -405,7 +415,7 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
     #Initialize model
 
     while True:
-
+        print(env.SDE_Set)
         (beliefState, probsTrans) = activeExperimentation(env, numSDEsPerExperiment, explore)
 
         if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
@@ -415,7 +425,7 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
         if not splitResult:
             break
         # input("Done with the current iteration. Press any key to begin the next iteration.")
-        print(env.SDE_Set)
+
     print(env.SDE_Set)
 
 
@@ -427,7 +437,7 @@ if __name__ == "__main__":
     (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
     print(probsTrans)"""
 
-    env = Example3()
+    env = Example2()
 
     entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0.6
