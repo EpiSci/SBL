@@ -126,7 +126,7 @@ class Example3(sPOMDPModelExample):
     def __init__(self):
         #Set Environment Details
         self.O_S = ["rose", "volcano","nothing"] #Observation Set
-        self.A_S = ["f", "b", "t"] #Action Set
+        self.A_S = ["b", "f", "t"] #Action Set
         self.State_Size = 4
         self.Alpha = 0.99
         self.Epsilon = 0.99
@@ -148,6 +148,68 @@ class Example3(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "volcano", Action_Dictionary = {"f": 2, "b": 3, "t": 1})) #state 1
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 0, "b": 1, "t": 3})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 1, "b": 0, "t": 2})) #state 3
+
+#This class extends the generic sPOMDP model. This model is the from the environment from Figure 4, but only with 2 known SDEs (goal, nothing)
+class Example4(sPOMDPModelExample):
+    def __init__(self):
+        #Set Environment Details
+        self.O_S = ["goal","nothing"] #Observation Set
+        self.A_S = ["east", "west"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set = []
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+
+        #Generate States
+        self.Node_Set = []
+        self.Node_Set.append(sPOMDPNode(Observation = "goal", Action_Dictionary = {"east": 1, "west": 3})) #state goal
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 2, "west": 0})) #state left
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 3, "west": 1})) #state middle
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 0, "west": 2})) #state right
+
+#This class extends the generic sPOMDP model. This model is the from the environment from Figure 5, 
+#but only with 5 known starting SDEs (nothing, LRVForward, MRVForward, LRVDocked, MRVDocked)
+class Example5(sPOMDPModelExample):
+    def __init__(self):
+        #Set Environment Details
+        self.O_S = ["nothing","LRVForward", "MRVForward", "LRVDocked", "MRVDocked"] #Observation Set
+        self.A_S = ["b", "f", "t"] #Action Set
+        self.State_Size = 8
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set = []
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+        self.SDE_Set.append([self.O_S[2]])
+        self.SDE_Set.append([self.O_S[3]])        
+        self.SDE_Set.append([self.O_S[4]])
+
+        #Generate States
+        self.Node_Set = []
+        self.Node_Set.append(sPOMDPNode(Observation = "LRVDocked", Action_Dictionary = {"b": 1, "f": 4, "t": 1})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 1, "f": 1, "t": 4})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 3, "f": 1, "t": 5})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"b": 0, "f": 2, "t": 6})) #state 3
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"b": 7, "f": 5, "t": 1})) #state 4
+        self.Node_Set.append(sPOMDPNode(Observation = "LRVForward", Action_Dictionary = {"b": 4, "f": 6, "t": 2})) #state 5
+        self.Node_Set.append(sPOMDPNode(Observation = "LRVForward", Action_Dictionary = {"b": 6, "f": 6, "t": 3})) #state 6
+        self.Node_Set.append(sPOMDPNode(Observation = "MRVDocked", Action_Dictionary = {"b": 7, "f": 4, "t": 1})) #state 7
 
 #Used in Algorithm 3 code as a generic model.
 class genericModel(sPOMDPModelExample):
@@ -357,20 +419,26 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
             print(transitionSetProbs)
             print(transitionSetEntropy)
             print("++++++++++++++")"""
-            if transitionSetEntropy > surpriseThresh: #TODO: The paper says to check if this is greater than a threshold. Would it be better if it just changed the state with the maximum entropy? At this point the algorithm has already decided to split...
+            if transitionSetEntropy > surpriseThresh: 
                 didSplit = True
                 #Find m1_prime and m2_prime such that they match up to a first difference in observation
-                #TODO: Would it be better to find all possible m1_primes and m2_primes, and then choose the m1_prime and m2_prime that correspond to the smallest entropy?
-                #       The motivation for this would be that the smaller entropy would indicate a transition that is closer to being fully learned
-                #       This would then mean the SDE used to distinguish the two states would be using a transition that the algorithm previously identified
+                #Choose the SDE that has the highest entropy, as this indicates that more information must be learned for this transition.
                 SDE_List = env.get_SDE()
+                maxEntropy = 0
                 m1_prime = []
                 m2_prime = []
-                for sde1 in SDE_List:
-                    for sde2 in SDE_List:
+                for sde1_idx, sde1 in enumerate(SDE_List):
+                    for sde2_idx, sde2 in enumerate(SDE_List):
                         if (sde1 != sde2) and (sde1[:-1] == sde2[:-1]):
-                            m1_prime = sde1
-                            m2_prime = sde2
+                            #Calculate relative entropy. The higher the entropy, the better to use these trajectories as an SDE.
+                            prob1 = transitionSetProbs[sde1_idx]
+                            prob2 = transitionSetProbs[sde2_idx]
+                            normalized_Probs = np.array([prob1, prob2]) / np.sum(np.array([prob1, prob2]))
+                            relativeEntropy = np.sum(np.multiply(normalized_Probs,(np.log2(normalized_Probs)))) * -1
+                            if relativeEntropy > maxEntropy:
+                                maxEntropy = relativeEntropy
+                                m1_prime = sde1
+                                m2_prime = sde2
 
                 if not m1_prime or not m2_prime:
                     return (False,env) #Not sure if this case would ever occur, but if it does, return False
@@ -423,6 +491,7 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 
         (splitResult, env) = trySplitBySurprise(env, probsTrans, surpriseThresh)
         if not splitResult:
+            print("Stopped because not able to split")
             break
         # input("Done with the current iteration. Press any key to begin the next iteration.")
 
@@ -437,10 +506,10 @@ if __name__ == "__main__":
     (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
     print(probsTrans)"""
 
-    env = Example2()
+    env = Example5()
 
     entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    surpriseThresh = 0.6
+    surpriseThresh = 0.4
     numSDEsPerExperiment = 1000
     explore = 0.05
     approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
