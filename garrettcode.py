@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import dirichlet
 
 #The name of this file should be changed later.  I just wanted to make it obvious which file had my attempt.
 
@@ -242,21 +243,14 @@ def activeExperimentation(env, SDE_Num, explore):
     Full_Transition = [Current_Observation]
 
     Action_Count = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))*0.0001
-    iterations = 10000
+    iterations = 100000
 
-    lr = 0.01
-
-    Old_Action = [None for item in env.A_S]
+    Old_Gammas = [None for item in env.A_S]
     previousTransitions = []
     Action_Probs = np.array([])
     stopCount = 0
 
     for _ in range(iterations):
-        if _ % 100 == 0:
-           print(_)
-           # if np.any(Action_Probs):
-           #     print(Action_Probs)s
-
         if _ > 0:
             Full_Transition = [Full_Transition[-1]]
         #Exectue SDE_Num amount of SDE.
@@ -300,14 +294,31 @@ def activeExperimentation(env, SDE_Num, explore):
         #Initiate Transition Matrixes
 
         Action_Row_Sum = Action_Count.sum(axis=2)
-        Action_Probs = np.divide(np.transpose(Action_Count,(0,2,1)), Action_Row_Sum[:,np.newaxis])
-        Action_Probs = np.transpose(Action_Probs,(0,2,1))
+
+        if all(item is None for item in Old_Gammas):
+            Action_Gammas = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))
+        else:
+            Action_Gammas = Action_Count + Old_Gammas
 
         first_Observations = [item[0] for item in SDE_List]
-        if all(item is not None for item in Old_Action):
-            Action_Probs = lr*Action_Probs + (1-lr)*Old_Action
 
-        Old_Action = Action_Probs
+        Old_Gammas = Action_Gammas.copy()
+        # convert gammas to transition probabilities
+        Action_Probs = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
+        for action in range(len(env.A_S)):
+            for state in range(len(SDE_List)):
+                Action_Probs[action, state, :] = dirichlet.mean(Action_Gammas[action, state, :])
+
+        if _ % 100 == 0:
+            print(_)
+            print("---")
+            print("Action_Gammas")
+            print(Action_Gammas)
+            print("***")
+            print("Action_Probs")
+            print(Action_Probs)
+            print("---")
+
 
         SDE_Belief_Mask = []
         for SDE_idx, SDE in enumerate(SDE_List):
@@ -349,7 +360,7 @@ def activeExperimentation(env, SDE_Num, explore):
         Belief_State = Belief_State*Belief_Mask
         Belief_State = Belief_State/np.sum(Belief_State)
                 
-        Action_Count = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))*0.0001
+        Action_Count = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
 
         for Transition_Idx in range(len(Informed_Transition)//2):
             #Belief State
@@ -357,7 +368,6 @@ def activeExperimentation(env, SDE_Num, explore):
             Observation = Informed_Transition[Transition_Idx*2+2]
             Action = Informed_Transition[Transition_Idx*2+1]
             Previous_Belief_State = Belief_State.copy()
-            Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
 
             
             Model_Action_Idx = env.A_S.index(Action)
@@ -374,8 +384,17 @@ def activeExperimentation(env, SDE_Num, explore):
             Belief_State = Belief_State/np.sum(Belief_State)
 
             #Updated Transition
-            Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :])
-            
+            nonzero_values = np.count_nonzero(Previous_Belief_State)
+            temp = Previous_Belief_State.copy()
+            temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0])
+            log_values = temp / np.log(nonzero_values)  # change of base formula since numpy doesn't support log with arbitrary bases
+            entropy_scaling = 1 + np.multiply(log_values, Previous_Belief_State).sum()
+            Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
+            Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, 1)
+            max_row = np.argmax(np.max(Belief_Count, axis=1))
+            Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
+
+
             Model_Action_Idx = env.A_S.index(Action)
             Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
             """print(Full_Transition)
@@ -388,11 +407,12 @@ def activeExperimentation(env, SDE_Num, explore):
 
         if np.size(previousTransitions) > 0:
             delta = np.max(np.abs(previousTransitions - Action_Probs))
-            if delta < 0.0005:
+            if delta < 0.00001:
                 stopCount = stopCount + 1
             else:
                 stopCount = 0
-            if stopCount >= 10:
+            if stopCount >= 1000:
+                print("Finished early at iteration # " + str(_))
                 break
 
         previousTransitions = Action_Probs
@@ -500,16 +520,16 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    """env = Example2()
-    SDE_Num = 10
+    env = Example1()
+    SDE_Num = 3
     explore = 0.05
     (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
-    print(probsTrans)"""
+    print(probsTrans)
 
-    env = Example5()
+    # env = Example5()
 
-    entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    surpriseThresh = 0.4
-    numSDEsPerExperiment = 1000
-    explore = 0.05
-    approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
+    # entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    # surpriseThresh = 0.4
+    # numSDEsPerExperiment = 1000
+    # explore = 0.05
+    # approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
