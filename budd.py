@@ -311,13 +311,13 @@ def activeExperimentation(env, SDE_Num, explore):
 
         if _ % 100 == 0:
             print(_)
-            print("---")
+            """print("---")
             print("Action_Gammas")
             print(Action_Gammas)
             print("***")
             print("Action_Probs")
             print(Action_Probs)
-            print("---")
+            print("---")"""
 
 
         SDE_Belief_Mask = []
@@ -386,13 +386,19 @@ def activeExperimentation(env, SDE_Num, explore):
             #Updated Transition
             nonzero_values = np.count_nonzero(Previous_Belief_State)
             temp = Previous_Belief_State.copy()
-            temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0])
-            log_values = temp / np.log(nonzero_values)  # change of base formula since numpy doesn't support log with arbitrary bases
-            entropy_scaling = 1 + np.multiply(log_values, Previous_Belief_State).sum()
+            if np.amax(temp) < 1:
+                temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0])
+                #I think we need to check to see if it isn't in a case where it 100% knows it's belief state. i.e. take max of the array and see if it is = 1. If it is, entropy is 0, so scaling should be 1
+ 
+                log_values = temp / np.log(nonzero_values)  # change of base formula since numpy doesn't support log with arbitrary bases
+                entropy_scaling = 1 + np.multiply(log_values, Previous_Belief_State).sum()
+            else:
+                entropy_scaling =  1 # max of array is 1; entropy is zero -> set scaling to 1    
             Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
             Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, 1)
             max_row = np.argmax(np.max(Belief_Count, axis=1))
             Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
+            
 
 
             Model_Action_Idx = env.A_S.index(Action)
@@ -407,7 +413,7 @@ def activeExperimentation(env, SDE_Num, explore):
 
         if np.size(previousTransitions) > 0:
             delta = np.max(np.abs(previousTransitions - Action_Probs))
-            if delta < 0.00001:
+            if delta < 0.0001:
                 stopCount = stopCount + 1
             else:
                 stopCount = 0
@@ -520,7 +526,7 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    env = Example1()
+    env = Example2()
     SDE_Num = 3
     explore = 0.05
     (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
