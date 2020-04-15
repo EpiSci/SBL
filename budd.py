@@ -243,7 +243,7 @@ def activeExperimentation(env, SDE_Num, explore):
     Full_Transition = [Current_Observation]
 
     Action_Count = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))*0.0001
-    iterations = 100000
+    iterations = 200000
 
     Old_Gammas = [None for item in env.A_S]
     previousTransitions = []
@@ -387,9 +387,7 @@ def activeExperimentation(env, SDE_Num, explore):
             nonzero_values = np.count_nonzero(Previous_Belief_State)
             temp = Previous_Belief_State.copy()
             if np.amax(temp) < 1:
-                temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0])
-                #I think we need to check to see if it isn't in a case where it 100% knows it's belief state. i.e. take max of the array and see if it is = 1. If it is, entropy is 0, so scaling should be 1
- 
+                temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0]) 
                 log_values = temp / np.log(nonzero_values)  # change of base formula since numpy doesn't support log with arbitrary bases
                 entropy_scaling = 1 + np.multiply(log_values, Previous_Belief_State).sum()
             else:
@@ -435,58 +433,62 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
 
     # for action_idx, action in enumerate(env.A_S):
     #    for state_idx, transitionSetProbs in enumerate(Action_Probs[action_idx,:,:]):
+    m1_prime = []
+    m2_prime = []
+    a_optimal = ""
+    m_optimal = ""
+    maxEntropy = 0
     for m_idx, m in enumerate(env.SDE_Set):
         for a_idx, a in enumerate(env.A_S):
             transitionSetProbs = Action_Probs[a_idx,m_idx,:]
             transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
-            """print("-------------")
-            print(m)
-            print(a)
-            print(transitionSetProbs)
-            print(transitionSetEntropy)
-            print("++++++++++++++")"""
+
             if transitionSetEntropy > surpriseThresh: 
                 didSplit = True
                 #Find m1_prime and m2_prime such that they match up to a first difference in observation
                 #Choose the SDE that has the highest entropy, as this indicates that more information must be learned for this transition.
                 SDE_List = env.get_SDE()
-                maxEntropy = 0
-                m1_prime = []
-                m2_prime = []
-                for sde1_idx, sde1 in enumerate(SDE_List):
-                    for sde2_idx, sde2 in enumerate(SDE_List):
-                        if (sde1 != sde2) and (sde1[:-1] == sde2[:-1]):
-                            #Calculate relative entropy. The higher the entropy, the better to use these trajectories as an SDE.
-                            prob1 = transitionSetProbs[sde1_idx]
-                            prob2 = transitionSetProbs[sde2_idx]
-                            normalized_Probs = np.array([prob1, prob2]) / np.sum(np.array([prob1, prob2]))
-                            relativeEntropy = np.sum(np.multiply(normalized_Probs,(np.log2(normalized_Probs)))) * -1
-                            if relativeEntropy > maxEntropy:
-                                maxEntropy = relativeEntropy
-                                m1_prime = sde1
-                                m2_prime = sde2
 
-                if not m1_prime or not m2_prime:
-                    return (False,env) #Not sure if this case would ever occur, but if it does, return False
-               
-                m1_new = [m[0]]
-                m1_new.append(a)
-                m1_new = m1_new + m1_prime
-                m2_new = [m[0]]
-                m2_new.append(a)
-                m2_new = m2_new + m2_prime
+                #Only look at the pair with the maximum probabilities to determine if entropy is sufficient to split.
+                orderedVals = transitionSetProbs.copy()
+                orderedVals.sort()
+                prob1 = orderedVals[-1] #largest probability
+                prob2 = orderedVals[-2] #second largest probability
+                sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
+                sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
+                sde1 = SDE_List[sde1_idx]
+                sde2 = SDE_List[sde2_idx]
 
-                SDE_Set_new = env.get_SDE()
-                SDE_Set_new.append(m1_new)
-                SDE_Set_new.append(m2_new)
-                SDE_Set_new.remove(m)
-                #Note: did note do line 14 of Algorithm 1 as this would add the new SDE to the SDE list.
-                #       However, the way we currently store model states is by their SDE (i.e. actions and observations)
-                #       The Collins paper stores the SDEs as only the corresponding actions
+                normalized_Probs = np.array([prob1, prob2]) / np.sum(np.array([prob1, prob2]))
+                relativeEntropy = np.sum(np.multiply(normalized_Probs,(np.log2(normalized_Probs)))) * -1
+                if relativeEntropy > maxEntropy:
+                    m1_prime = sde1
+                    m2_prime = sde2
+                    a_optimal = a
+                    m_optimal = m
+                    maxEntropy = relativeEntropy
 
-                
-                newEnv = genericModel(env.O_S, env.A_S, env.State_Size, SDE_Set_new, env.Alpha, env.Epsilon, env.Node_Set)
-                return (didSplit, newEnv)
+    if not m1_prime or not m2_prime:
+        return (False,env) #Not sure if this case would ever occur, but if it does, return False
+   
+    m1_new = [m_optimal[0]]
+    m1_new.append(a_optimal)
+    m1_new = m1_new + m1_prime
+    m2_new = [m_optimal[0]]
+    m2_new.append(a_optimal)
+    m2_new = m2_new + m2_prime
+
+    SDE_Set_new = env.get_SDE()
+    SDE_Set_new.append(m1_new)
+    SDE_Set_new.append(m2_new)
+    SDE_Set_new.remove(m_optimal)
+    #Note: did note do line 14 of Algorithm 1 as this would add the new SDE to the SDE list.
+    #       However, the way we currently store model states is by their SDE (i.e. actions and observations)
+    #       The Collins paper stores the SDEs as only the corresponding actions
+
+    
+    newEnv = genericModel(env.O_S, env.A_S, env.State_Size, SDE_Set_new, env.Alpha, env.Epsilon, env.Node_Set)
+    return (didSplit, newEnv)
     return (didSplit, newEnv)
 
 #TODO: Need to update this once Dirichlet distributions are determined
@@ -526,16 +528,16 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    env = Example2()
-    SDE_Num = 3
-    explore = 0.05
-    (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
-    print(probsTrans)
-
-    # env = Example5()
-
-    # entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    # surpriseThresh = 0.4
-    # numSDEsPerExperiment = 1000
+    # env = Example2()
+    # SDE_Num = 3
     # explore = 0.05
-    # approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
+    # (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
+    # print(probsTrans)
+
+    env = Example2()
+
+    entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    surpriseThresh = 0.4
+    numSDEsPerExperiment = 3
+    explore = 0.05
+    approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
