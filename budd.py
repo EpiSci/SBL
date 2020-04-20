@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import dirichlet
+from scipy.stats import dirichlet, entropy
 
 #The name of this file should be changed later.  I just wanted to make it obvious which file had my attempt.
 
@@ -360,13 +360,7 @@ def activeExperimentation(env, SDE_Num, explore):
 
         #Updated Transition
         nonzero_values = np.count_nonzero(Previous_Belief_State)
-        temp = Previous_Belief_State.copy()
-        if np.amax(temp) < 1:
-            temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0]) 
-            log_values = temp / np.log(nonzero_values)  # change of base formula since numpy doesn't support log with arbitrary bases
-            entropy_scaling = 1 + np.multiply(log_values, Previous_Belief_State).sum()
-        else:
-            entropy_scaling =  1 # max of array is 1; entropy is zero -> set scaling to 1    
+        entropy_scaling = 1 - entropy(Previous_Belief_State, base=nonzero_values)
         Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
         Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, aggressiveness_factor)
         max_row = np.argmax(np.max(Belief_Count, axis=1))
@@ -490,7 +484,7 @@ def getModelEntropy(env, transitionProbs):
     for m_idx, m in enumerate(env.SDE_Set):
         for a_idx, a in enumerate(env.A_S):
             transitionSetProbs = transitionProbs[a_idx,m_idx,:]
-            transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
+            transitionSetEntropy = entropy(transitionSetProbs, base=len(env.SDE_Set))
             #TODO: change this ratio to be the correct ratio from equation 4
             ratio = 1/(len(env.SDE_Set) * len(env.A_S))
             summation = transitionSetEntropy*ratio + summation
