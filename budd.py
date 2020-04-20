@@ -241,185 +241,178 @@ def activeExperimentation(env, SDE_Num, explore):
 
     #Generate Full Transitions
     Full_Transition = [Current_Observation]
+    
+    aggressiveness_factor = 10
+    confidence_factor = 100
 
-    Action_Count = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))*0.0001
-    iterations = 200000
-
-    Old_Gammas = [None for item in env.A_S]
-    previousTransitions = []
-    Action_Probs = np.array([])
-    stopCount = 0
-
-    for _ in range(iterations):
-        if _ > 0:
-            Full_Transition = [Full_Transition[-1]]
-        #Exectue SDE_Num amount of SDE.
-        for num in range(0,SDE_Num):
-            Matching_SDE = env.get_SDE(Current_Observation)
-            Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
-            Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
-            for action in Chosen_SDE_Actions:
-                if np.random.random() < explore:
-                    Current_Observation, random_action = env.random_step()
-                    Full_Transition.append(random_action)
-                    Full_Transition.append(Current_Observation)
-                    break
-                else:
-                    Current_Observation = env.step(action)
-                    Full_Transition.append(action)
-                    Full_Transition.append(Current_Observation)
-            if num+1 < SDE_Num:
+    #Exectue SDE_Num amount of SDE.
+    for num in range(0,SDE_Num):
+        Matching_SDE = env.get_SDE(Current_Observation)
+        Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+        Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
+        for action in Chosen_SDE_Actions:
+            if np.random.random() < explore:
                 Current_Observation, random_action = env.random_step()
                 Full_Transition.append(random_action)
                 Full_Transition.append(Current_Observation)
+                break
+            else:
+                Current_Observation = env.step(action)
+                Full_Transition.append(action)
+                Full_Transition.append(Current_Observation)
+        if num+1 < SDE_Num:
+            Current_Observation, random_action = env.random_step()
+            Full_Transition.append(random_action)
+            Full_Transition.append(Current_Observation)
 
-        #Get SDE Transitions
-        SDE_List = env.get_SDE()
+    #Get SDE Transitions
+    SDE_List = env.get_SDE()
 
-        #Detect Successful Transitions
-        Informed_Transition = Full_Transition.copy()
-        for Transition_Idx in range(len(Full_Transition)):
-            for SDE_Idx, SDE in enumerate(SDE_List):
-                if len(SDE) <= len(Full_Transition)-Transition_Idx:
-                    for EO_Idx, Expected_Observation in enumerate(SDE):
-                        if(Expected_Observation == Full_Transition[Transition_Idx + EO_Idx]):
-                            if EO_Idx == len(SDE)-1:
-                                Informed_Transition[Transition_Idx] = SDE_Idx
-                        else:
-                            break
+    #Detect Successful Transitions
+    Informed_Transition = Full_Transition.copy()
+    for Transition_Idx in range(len(Full_Transition)):
+        for SDE_Idx, SDE in enumerate(SDE_List):
+            if len(SDE) <= len(Full_Transition)-Transition_Idx:
+                for EO_Idx, Expected_Observation in enumerate(SDE):
+                    if(Expected_Observation == Full_Transition[Transition_Idx + EO_Idx]):
+                        if EO_Idx == len(SDE)-1:
+                            Informed_Transition[Transition_Idx] = SDE_Idx
+                    else:
+                        break
 
-        #The Code Below is a little hacky as it needs to be updated to work with any observation or action set.
-        #Learn Transitions
+    #The Code Below is a little hacky as it needs to be updated to work with any observation or action set.
+    #Learn Transitions
 
-        #Initiate Transition Matrixes
+    #Initiate Transition Matrixes
 
-        Action_Row_Sum = Action_Count.sum(axis=2)
+    Action_Gammas = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))
 
-        if all(item is None for item in Old_Gammas):
-            Action_Gammas = np.ones((len(env.A_S),len(SDE_List),len(SDE_List)))
-        else:
-            Action_Gammas = Action_Count + Old_Gammas
+    first_Observations = [item[0] for item in SDE_List]
 
-        first_Observations = [item[0] for item in SDE_List]
-
-        Old_Gammas = Action_Gammas.copy()
-        # convert gammas to transition probabilities
-        Action_Probs = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
-        for action in range(len(env.A_S)):
-            for state in range(len(SDE_List)):
-                Action_Probs[action, state, :] = dirichlet.mean(Action_Gammas[action, state, :])
-
-        if _ % 100 == 0:
-            print(_)
-            """print("---")
-            print("Action_Gammas")
-            print(Action_Gammas)
-            print("***")
-            print("Action_Probs")
-            print(Action_Probs)
-            print("---")"""
+    # # convert gammas to transition probabilities
+    Action_Probs = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
+    for action in range(len(env.A_S)):
+        for state in range(len(SDE_List)):
+            Action_Probs[action, state, :] = dirichlet.mean(Action_Gammas[action, state, :])
 
 
-        SDE_Belief_Mask = []
-        for SDE_idx, SDE in enumerate(SDE_List):
-            SDE_Chance = np.zeros(len(SDE_List))
-            for o in env.O_S:
-                #Set equal probability for each action to occur
-                if SDE[0] == o:
-                    #Figure out how many SDEs correspond to the observation
-                    num_Correspond = first_Observations.count(o)
-                    #Set the corresponding SDEs to 1 divided by that value
-                    SDE_Chance[(np.array(first_Observations) == SDE[0])] = 1/num_Correspond
+    SDE_Belief_Mask = []
+    for SDE_idx, SDE in enumerate(SDE_List):
+        SDE_Chance = np.zeros(len(SDE_List))
+        for o in env.O_S:
+            #Set equal probability for each action to occur
+            if SDE[0] == o:
+                #Figure out how many SDEs correspond to the observation
+                num_Correspond = first_Observations.count(o)
+                #Set the corresponding SDEs to 1 divided by that value
+                SDE_Chance[(np.array(first_Observations) == SDE[0])] = 1/num_Correspond
+        
+
+        Trans = np.ones((len(SDE_List),len(SDE_List)))/len(SDE_List)
+        for action_idx in range(len(SDE)//2):
+            Action = SDE[action_idx*2+1]
+            Observation = SDE[action_idx*2+2]
+            Model_Action_Idx = env.A_S.index(Action)
+            Tmp_Transition = Action_Probs[Model_Action_Idx,:,:]
+            Trans = np.dot(Trans, Tmp_Transition)
+            #Mask the transition matrix
+            Trans[:,(np.array(first_Observations) != Observation)] = 0
+            SDE_Chance = SDE_Chance * np.sum(Trans, axis=1)
+        SDE_Chance[SDE_idx] = env.Alpha**2
+        SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
+        SDE_Belief_Mask.append(SDE_Chance)
+
+    #Initiate Belief State
+    Belief_State = np.ones(len(SDE_List))/len(SDE_List)
+    Belief_Mask = np.zeros(len(SDE_List))
+    Observation = Informed_Transition[0]
+    #If the observation is just a "simple" observation, then set the belief mask to 1 if the SDE for that state starts with that observation
+    if Observation in env.O_S:
+        for o in env.O_S:
+            if Observation == o:
+                Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
+    else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
+        Belief_Mask = SDE_Belief_Mask[Observation]
+    Belief_State = Belief_State*Belief_Mask
+    Belief_State = Belief_State/np.sum(Belief_State)
             
+    Action_Count = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
 
-            Trans = np.ones((len(SDE_List),len(SDE_List)))/len(SDE_List)
-            for action_idx in range(len(SDE)//2):
-                Action = SDE[action_idx*2+1]
-                Observation = SDE[action_idx*2+2]
-                Model_Action_Idx = env.A_S.index(Action)
-                Tmp_Transition = Action_Probs[Model_Action_Idx,:,:]
-                Trans = np.dot(Trans, Tmp_Transition)
-                #Mask the transition matrix
-                Trans[:,(np.array(first_Observations) != Observation)] = 0
-                SDE_Chance = SDE_Chance * np.sum(Trans, axis=1)
-            SDE_Chance[SDE_idx] = 0.99**2
-            SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
-            SDE_Belief_Mask.append(SDE_Chance)
-
-        #Initiate Belief State
-        Belief_State = np.ones(len(SDE_List))/len(SDE_List)
+    for Transition_Idx in range(len(Informed_Transition)//2):
+        #Belief State
         Belief_Mask = np.zeros(len(SDE_List))
-        Observation = Informed_Transition[0]
-        #If the observation is just a "simple" observation, then set the belief mask to 1 if the SDE for that state starts with that observation
+        Observation = Informed_Transition[Transition_Idx*2+2]
+        Action = Informed_Transition[Transition_Idx*2+1]
+        Previous_Belief_State = Belief_State.copy()
+        
+        Model_Action_Idx = env.A_S.index(Action)
+        Belief_State = np.dot(Belief_State, Action_Probs[Model_Action_Idx,:,:])
+        
         if Observation in env.O_S:
             for o in env.O_S:
                 if Observation == o:
                     Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
         else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
             Belief_Mask = SDE_Belief_Mask[Observation]
+
         Belief_State = Belief_State*Belief_Mask
         Belief_State = Belief_State/np.sum(Belief_State)
-                
-        Action_Count = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
 
-        for Transition_Idx in range(len(Informed_Transition)//2):
-            #Belief State
-            Belief_Mask = np.zeros(len(SDE_List))
-            Observation = Informed_Transition[Transition_Idx*2+2]
-            Action = Informed_Transition[Transition_Idx*2+1]
-            Previous_Belief_State = Belief_State.copy()
+        #Updated Transition
+        nonzero_values = np.count_nonzero(Previous_Belief_State)
+        temp = Previous_Belief_State.copy()
+        if np.amax(temp) < 1:
+            temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0]) 
+            log_values = temp / np.log(nonzero_values)  # change of base formula since numpy doesn't support log with arbitrary bases
+            entropy_scaling = 1 + np.multiply(log_values, Previous_Belief_State).sum()
+        else:
+            entropy_scaling =  1 # max of array is 1; entropy is zero -> set scaling to 1    
+        Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
+        Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, aggressiveness_factor)
+        max_row = np.argmax(np.max(Belief_Count, axis=1))
+        Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
 
-            
-            Model_Action_Idx = env.A_S.index(Action)
-            Belief_State = np.dot(Belief_State, Action_Probs[Model_Action_Idx,:,:])
-            
-            if Observation in env.O_S:
-                for o in env.O_S:
-                    if Observation == o:
-                        Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
-            else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
-                Belief_Mask = SDE_Belief_Mask[Observation]
+        Model_Action_Idx = env.A_S.index(Action)
+        Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
 
-            Belief_State = Belief_State*Belief_Mask
-            Belief_State = Belief_State/np.sum(Belief_State)
+        Action_Gammas = Action_Count + Action_Gammas
+        
+        # convert gammas to transition probabilities
+        Action_Probs = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
+        for action in range(len(env.A_S)):
+            for state in range(len(SDE_List)):
+                Action_Probs[action, state, :] = dirichlet.mean(Action_Gammas[action, state, :])
 
-            #Updated Transition
-            nonzero_values = np.count_nonzero(Previous_Belief_State)
-            temp = Previous_Belief_State.copy()
-            if np.amax(temp) < 1:
-                temp[Previous_Belief_State > 0] = np.log(Previous_Belief_State[Previous_Belief_State > 0]) 
-                log_values = temp / np.log(nonzero_values)  # change of base formula since numpy doesn't support log with arbitrary bases
-                entropy_scaling = 1 + np.multiply(log_values, Previous_Belief_State).sum()
-            else:
-                entropy_scaling =  1 # max of array is 1; entropy is zero -> set scaling to 1    
-            Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
-            Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, 1)
-            max_row = np.argmax(np.max(Belief_Count, axis=1))
-            Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
-            
+        if Transition_Idx % 1000 == 0:
+            print(Transition_Idx)
+            print("---")
+            print("Action_Gammas")
+            print(Action_Gammas)
+            print("***")
+            print("Action_Probs")
+            print(Action_Probs)
+            print("---")
 
+        """print(Full_Transition)
+        print(Informed_Transition)
+        print(Action_Count)
+        print(Previous_Belief_State)
+        print(Action)
+        print(Observation)
+        """
 
-            Model_Action_Idx = env.A_S.index(Action)
-            Action_Count[Model_Action_Idx,:] = Action_Count[Model_Action_Idx,:] + Belief_Count
-            """print(Full_Transition)
-            print(Informed_Transition)
-            print(Action_Count)
-            print(Previous_Belief_State)
-            print(Action)
-            print(Observation)
-            1/0"""
+        if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor):
+            print("Finished early at action # " + str(Transition_Idx))
+            break
 
-        if np.size(previousTransitions) > 0:
-            delta = np.max(np.abs(previousTransitions - Action_Probs))
-            if delta < 0.0001:
-                stopCount = stopCount + 1
-            else:
-                stopCount = 0
-            if stopCount >= 1000:
-                print("Finished early at iteration # " + str(_))
-                break
-
-        previousTransitions = Action_Probs
+    # print(Transition_Idx)
+    # print("---")
+    # print("Action_Gammas")
+    # print(Action_Gammas)
+    # print("***")
+    # print("Action_Probs")
+    # print(Action_Probs)
+    # print("---")
             
     return (Belief_State, Action_Probs)
 
@@ -528,16 +521,16 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    # env = Example2()
-    # SDE_Num = 3
-    # explore = 0.05
-    # (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
-    # print(probsTrans)
-
-    env = Example2()
-
-    entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    surpriseThresh = 0.4
-    numSDEsPerExperiment = 3
+    env = Example1()
+    SDE_Num = 10000
     explore = 0.05
-    approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
+    (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
+    print(probsTrans)
+
+    # env = Example2()
+
+    # entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    # surpriseThresh = 0.4
+    # numSDEsPerExperiment = 3
+    # explore = 0.05
+    # approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
