@@ -242,7 +242,7 @@ def activeExperimentation(env, SDE_Num, explore):
     #Generate Full Transitions
     Full_Transition = [Current_Observation]
     
-    aggressiveness_factor = 10
+    conservativeness_factor = 10
     confidence_factor = 100
 
     #Exectue SDE_Num amount of SDE.
@@ -362,7 +362,7 @@ def activeExperimentation(env, SDE_Num, explore):
         nonzero_values = np.count_nonzero(Previous_Belief_State)
         entropy_scaling = 1 - entropy(Previous_Belief_State, base=nonzero_values)
         Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
-        Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, aggressiveness_factor)
+        Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
         max_row = np.argmax(np.max(Belief_Count, axis=1))
         Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
 
