@@ -422,13 +422,13 @@ def activeExperimentation(env, SDE_Num, explore):
     # print(Action_Probs)
     # print("---")
             
-    return (Belief_State, Action_Probs)
+    return (Belief_State, Action_Probs, Action_Gammas)
 
 
 
 
 #Lines 6-19 of Algorithm 1. If splitting is successful, returns True and the new environment. Otherwise returns False and the previous environment.
-def trySplitBySurprise(env, Action_Probs, surpriseThresh):
+def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh):
     didSplit = False
     newEnv = env
 
@@ -443,8 +443,9 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
         for a_idx, a in enumerate(env.A_S):
             transitionSetProbs = Action_Probs[a_idx,m_idx,:]
             transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
+            gammaSum = np.sum(Action_Gammas[a_idx, m_idx, :])
 
-            if transitionSetEntropy > surpriseThresh: 
+            if transitionSetEntropy > surpriseThresh and (gammaSum > len(env.SDE_Set)*2):  #Check to see if entropy is high enough and that we actually updated these values by more than a small decimal
                 didSplit = True
                 #Find m1_prime and m2_prime such that they match up to a first difference in observation
                 #Choose the SDE that has the highest entropy, as this indicates that more information must be learned for this transition.
@@ -470,7 +471,7 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
                     maxEntropy = relativeEntropy
 
     if not m1_prime or not m2_prime:
-        return (False,env) #Not sure if this case would ever occur, but if it does, return False
+        return (False,env) #did not find an SDE to split that had high enough entropy
    
     m1_new = [m_optimal[0]]
     m1_new.append(a_optimal)
@@ -480,16 +481,24 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
     m2_new = m2_new + m2_prime
 
     SDE_Set_new = env.get_SDE()
-    SDE_Set_new.append(m1_new)
-    SDE_Set_new.append(m2_new)
-    SDE_Set_new.remove(m_optimal)
-    #Note: did note do line 14 of Algorithm 1 as this would add the new SDE to the SDE list.
-    #       However, the way we currently store model states is by their SDE (i.e. actions and observations)
-    #       The Collins paper stores the SDEs as only the corresponding actions
 
+    if m1_new in env.SDE_Set and m2_new in env.SDE_Set:
+        return (False, env) #trying to add two "new" SDEs that are already in the SDE list = failed to split
+
+    outcomesToAdd = 0
+    if not m1_new in env.SDE_Set:
+        SDE_Set_new.append(m1_new)
+        outcomesToAdd = outcomesToAdd + 1
+    if not m2_new in env.SDE_Set:
+        SDE_Set_new.append(m2_new)
+        outcomesToAdd = outcomesToAdd + 1
+    if outcomesToAdd > 1:
+        SDE_Set_new.remove(m_optimal)
+
+    print(m1_new)
+    print(m2_new)
     
     newEnv = genericModel(env.O_S, env.A_S, env.State_Size, SDE_Set_new, env.Alpha, env.Epsilon, env.Node_Set)
-    return (didSplit, newEnv)
     return (didSplit, newEnv)
 
 #TODO: Need to update this once Dirichlet distributions are determined
@@ -516,12 +525,12 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 
     while True:
         print(env.SDE_Set)
-        (beliefState, probsTrans) = activeExperimentation(env, numSDEsPerExperiment, explore)
+        (beliefState, probsTrans, actionGammas) = activeExperimentation(env, numSDEsPerExperiment, explore)
 
         if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
             break
 
-        (splitResult, env) = trySplitBySurprise(env, probsTrans, surpriseThresh)
+        (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh)
         if not splitResult:
             print("Stopped because not able to split")
             break
@@ -533,12 +542,12 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
     # env = Example1()
-    # SDE_Num = 10000
+    # SDE_Num = 50000
     # explore = 0.05
-    # (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
+    # (beliefState, probsTrans, actionGammas) = activeExperimentation(env, SDE_Num, explore)
     # print(probsTrans)
 
-    env = Example3()
+    env = Example2()
 
     entropyThresh = 0.45 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0.4
