@@ -309,7 +309,7 @@ def activeExperimentation(env, SDE_Num, explore):
             for state in range(len(SDE_List)):
                 Action_Probs[action, state, :] = dirichlet.mean(Action_Gammas[action, state, :])
 
-        if _ % 100 == 0:
+        if _ % 1000 == 0:
             print(_)
             """print("---")
             print("Action_Gammas")
@@ -494,13 +494,21 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
 #TODO: Need to update this once Dirichlet distributions are determined
 def getModelEntropy(env, transitionProbs):
     summation = 0
+    maximum = 0
     for m_idx, m in enumerate(env.SDE_Set):
         for a_idx, a in enumerate(env.A_S):
-            transitionSetProbs = transitionProbs[a_idx,m_idx,:]
+            """ transitionSetProbs = transitionProbs[a_idx,m_idx,:]
             transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
             #TODO: change this ratio to be the correct ratio from equation 4
             ratio = 1/(len(env.SDE_Set) * len(env.A_S))
-            summation = transitionSetEntropy*ratio + summation
+            summation = transitionSetEntropy*ratio + summation"""
+            transitionSetProbs = transitionProbs[a_idx,m_idx,:]
+            transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
+            if transitionSetEntropy > maximum:
+                maximum = transitionSetEntropy
+    print(maximum)
+    print(transitionProbs)
+    return maximum
     print(summation)
     print(transitionProbs)
     return summation
@@ -534,9 +542,9 @@ if __name__ == "__main__":
     # (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore)
     # print(probsTrans)
 
-    env = Example2()
+    env = Example5()
 
-    entropyThresh = 0.2 #Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    entropyThresh = 0.45 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0.4
     numSDEsPerExperiment = 3
     explore = 0.05
