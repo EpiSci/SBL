@@ -204,7 +204,7 @@ class Example5(sPOMDPModelExample):
 
         #Generate States
         self.Node_Set = []
-        self.Node_Set.append(sPOMDPNode(Observation = "LRVDocked", Action_Dictionary = {"b": 1, "f": 4, "t": 1})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "LRVDocked", Action_Dictionary = {"b": 7, "f": 4, "t": 1})) #state 0
         self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 1, "f": 1, "t": 4})) #state 1
         self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 3, "f": 1, "t": 5})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"b": 0, "f": 2, "t": 6})) #state 3
@@ -291,13 +291,15 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
 
     first_Observations = [item[0] for item in SDE_List]
 
+    OneStep_Gammas = np.ones((len(env.A_S),len(env.A_S),len(SDE_List),len(SDE_List),len(SDE_List))) #[gamma]aa'mm'm'' (formatted this way as we always know what action we took, but only have a belief over which model state we are in)
+
     # # convert gammas to transition probabilities
     Action_Probs = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
     for action in range(len(env.A_S)):
         for state in range(len(SDE_List)):
             Action_Probs[action, state, :] = dirichlet.mean(Action_Gammas[action, state, :])
 
-
+    #Generate a belief mask for each SDE that indicates what the likelihood is of being in each state if an SDE were to be successful
     SDE_Belief_Mask = []
     for SDE_idx, SDE in enumerate(SDE_List):
         SDE_Chance = np.zeros(len(SDE_List))
@@ -320,6 +322,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             #Mask the transition matrix
             Trans[:,(np.array(first_Observations) != Observation)] = 0
             SDE_Chance = SDE_Chance * np.sum(Trans, axis=1)
+
         num_Correspond = first_Observations.count(o)
         if num_Correspond > 1:
             SDE_Chance[(np.array(first_Observations) == SDE[0])] = (1 - env.Alpha**2)/(num_Correspond - 1)
@@ -328,7 +331,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
         SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
         SDE_Belief_Mask.append(SDE_Chance)
 
-    #Initiate Belief State
+    #Initialize Belief State using first observation in the trajectory
     Belief_State = np.ones(len(SDE_List))/len(SDE_List)
     Belief_Mask = np.zeros(len(SDE_List))
     Observation = Informed_Transition[0]
@@ -341,7 +344,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
         Belief_Mask = SDE_Belief_Mask[Observation]
     Belief_State = Belief_State*Belief_Mask
     Belief_State = Belief_State/np.sum(Belief_State)
-            
+
 
     Transition_Idx = 0
     # print(Informed_Transition)
@@ -473,25 +476,15 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             entropy_scaling = 1
         else:
             entropy_scaling = 1 - entropy(Previous_Belief_State, base=nonzero_values)
-        Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
-        Belief_Count = np.dot(Previous_Belief_State,Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
-        max_row = np.argmax(np.max(Belief_Count, axis=1))
-        Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
+        # Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
+        Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
+        # if Transition_Idx < len(Informed_Transition)//4:
+        if Transition_Idx < len(Informed_Transition):
+            max_row = np.argmax(np.max(Belief_Count, axis=1))
+            Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
+
 
         Model_Action_Idx = env.A_S.index(Action)
-
-        if np.sum(Belief_Count) > 1.1:
-            print(Transition_Idx)
-            print("---")
-            print("Action_Gammas")
-            print(Action_Gammas)
-            print("***")
-            print("Action_Probs")
-            print(Action_Probs)
-            print("---")
-            print("CRITICAL Error")
-            print(Belief_Count)
-            exit()
 
         Action_Gammas[Model_Action_Idx,:] = Belief_Count + Action_Gammas[Model_Action_Idx,:]
         
@@ -502,15 +495,77 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
                 Action_Probs[action, state, :] = dirichlet.mean(Action_Gammas[action, state, :])
 
 
-        if Transition_Idx % 100 == 0:
+        #Update one-step transition gammas
+        if Transition_Idx > 0: #i.e. this is the second action or later in the current trajectory, so we can calculate a one-step transition
+            prevObservation = Informed_Transition[Transition_Idx*2]
+            prevAction = Informed_Transition[Transition_Idx*2-1]
+            prevModel_Action_Idx = env.A_S.index(prevAction)
+
+            #For each non-zero value in tMinus2BeliefState (i.e. m), calculate what the value of the beliefStates would be after taking two actions/transitions (a and a')
+            #After each transition, mask states that don't correspond to the m' and m'' observations (which will be either a pre-processed SDE "observation" or an environment observation). Then normalize.
+            Transition1_Belief_State = np.dot(tMinus2BeliefState, Action_Probs[prevModel_Action_Idx,:,:])
+            Transition1_Belief_State = Transition1_Belief_State*prevBelief_Mask
+            Transition1_Belief_State =  Transition1_Belief_State/np.sum(Transition1_Belief_State)
+
+            Transition2_Belief_State = np.dot(Transition1_Belief_State, Action_Probs[Model_Action_Idx,:,:])
+            Transition2_Belief_State = Transition2_Belief_State*Belief_Mask
+            Transition2_Belief_State =  Transition2_Belief_State/np.sum(Transition2_Belief_State)
+            
+            # if prevAction == "west" and prevObservation == 1 and Action == "west" and Observation == 1:
+            #     print(tMinus2BeliefState)
+            #     print(prevAction)
+            #     print(prevObservation)
+            #     print(prevBelief_Mask)
+            #     print(Transition1_Belief_State)
+            #     print(Action)
+            #     print(Observation)
+            #     print(Transition2_Belief_State)
+            #     exit()
+
+            #Construct the m by m' by m'' matrix that will be used to update the OneStep_Gammas matrix.
+            #This involves scaling the resulting transition2 belief state by the transition1 belief state and then normalizing the entire matrix
+            
+            #Create a replicated array of transition2 belief state - replicate M times and then that array M times
+            # subMatrix = np.zeros((len(SDE_List),len(SDE_List),len(SDE_List)))
+            subMatrix = np.array([[Transition2_Belief_State]*len(SDE_List)]*len(SDE_List))
+            
+            #Use each previous belief state to mask the transition array
+            #Add 2 new axis to original belief state and one axis to the first transition belief state to get the proper multiplication
+            tmp1 = tMinus2BeliefState.copy()
+            tmp1 = tmp1[:,np.newaxis]
+            tmp1 = tmp1[:,np.newaxis]
+            subMatrix = subMatrix * tmp1
+            tmp2 = Transition1_Belief_State.copy()
+            tmp2 = tmp2[:,np.newaxis]
+            subMatrix = subMatrix * tmp2
+            subMatrix = subMatrix / (np.sum(subMatrix))
+
+            # print(subMatrix)
+            # print(":::::::::::::::::")
+            OneStep_Gammas[prevModel_Action_Idx,Model_Action_Idx,:] = OneStep_Gammas[prevModel_Action_Idx,Model_Action_Idx,:] + subMatrix
+            # print(OneStep_Gammas)
+            # print(tMinus2BeliefState)
+            # print(prevAction)
+            # print(prevObservation)
+            # print(Transition1_Belief_State)
+            # print(Action)
+            # print(Observation)
+            # print(Transition2_Belief_State)
+            # exit()
+
+        tMinus2BeliefState = Previous_Belief_State.copy()
+        prevBelief_Mask = Belief_Mask.copy()
+
+
+        if Transition_Idx % 1000 == 0:
             print(Transition_Idx)
-            print("---")
-            print("Action_Gammas")
-            print(Action_Gammas)
-            print("***")
-            print("Action_Probs")
-            print(Action_Probs)
-            print("---")
+            # print("---")
+            # print("Action_Gammas")
+            # print(Action_Gammas)
+            # print("***")
+            # print("Action_Probs")
+            # print(Action_Probs)
+            # print("---")
 
         """print(Full_Transition)
         print(Informed_Transition)
@@ -534,18 +589,131 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
     # print(Action_Probs)
     # print("---")
             
-    return (Belief_State, Action_Probs)
+    return (Belief_State, Action_Probs, Action_Gammas, OneStep_Gammas)
 
 
 
 
 #Lines 6-19 of Algorithm 1. If splitting is successful, returns True and the new environment. Otherwise returns False and the previous environment.
-def trySplitBySurprise(env, Action_Probs, surpriseThresh):
+def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep_Gammas):
     didSplit = False
     newEnv = env
 
-    # for action_idx, action in enumerate(env.A_S):
-    #    for state_idx, transitionSetProbs in enumerate(Action_Probs[action_idx,:,:]):
+    oneStep_TransitionProbs = OneStep_Gammas / np.reshape(np.repeat(np.sum(OneStep_Gammas, axis = 4),len(env.SDE_Set),axis=3),OneStep_Gammas.shape)
+    mSinglePrimeSum_aPrime = np.sum(OneStep_Gammas,axis = 4) #The total number of times the m' state is entered from state m under action a with respect to action a'
+    mSinglePrimeSum = np.sum(mSinglePrimeSum_aPrime,axis = 0) #The total number of times the m' state is entered from state m under action a
+    # mPrimeSum = np.sum(Action_Gammas, axis = 2) #The total number of times the action a is executed from state m
+    mPrimeSum = np.sum(np.sum(mSinglePrimeSum, axis = 0), axis=0) #The total number of times the m' state is entered
+    
+    print("OneStep_Gammas")
+    print(OneStep_Gammas)
+    print("----------------------")
+    print(mSinglePrimeSum_aPrime)
+    print("&&&&&&&&&&&&&&")
+    print(mSinglePrimeSum)
+    print("^^^^^^^^^^^^^^^")
+    print(mPrimeSum)
+    print("00000000000000")
+    # print(Action_Gammas)
+    # print(np.sum(Action_Gammas))
+    # print("?????????????")
+    # print(OneStep_Gammas)
+    # print(np.sum(OneStep_Gammas))
+
+    entropyMA = np.zeros((len(env.A_S),len(env.SDE_Set))) #index as action, model number 
+    gainMA = np.zeros((len(env.A_S),len(env.SDE_Set))) #index as action, model number
+    sigmaMatrix = np.zeros((len(env.A_S),len(env.SDE_Set)))
+    # Calculate the transition entropies H(Ttma). Calculate the gain values using the OneStep_Gammas
+    for mPrime_idx, mPrime in enumerate(env.SDE_Set):
+        for aPrime_idx, aPrime in enumerate(env.A_S):
+            transitionSetProbs = Action_Probs[aPrime_idx,mPrime_idx,:]
+            transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
+            entropyMA[aPrime_idx,mPrime_idx] = transitionSetEntropy
+
+            sigma = 0
+            w_maSum = 0
+            for a_idx, a in enumerate(env.A_S):
+                for m_idx, m in enumerate(env.SDE_Set):
+
+                    w_ma = mSinglePrimeSum[a_idx, m_idx, mPrime_idx] / mPrimeSum[mPrime_idx]
+                    w_maSum = w_maSum + w_ma
+                    # oneStepTransitionProb = oneStep_TransitionProbs[aPrime_idx,a_idx,m_idx,mPrime_idx,:]
+                    oneStepTransitionProb = oneStep_TransitionProbs[a_idx,aPrime_idx,m_idx,mPrime_idx,:]
+                    oneStep_TransitionEntropy = np.sum(np.multiply(oneStepTransitionProb,(np.log(oneStepTransitionProb) / np.log(len(env.SDE_Set))))) * -1
+                    sigma = (w_ma * oneStep_TransitionEntropy) + sigma
+
+                    if a == "east" and aPrime == "east" and m == ["nothing","east","nothing"]:
+                        print("Double East:")
+                        print(mPrime)
+                        print(w_ma)
+                        print(oneStepTransitionProb)
+                        print(oneStep_TransitionEntropy)
+                        print((w_ma * oneStep_TransitionEntropy))
+
+                    if a == "west" and aPrime == "east" and m == ["nothing","east","nothing"]:
+                        print("Single West:")
+                        print(mPrime)
+                        print(w_ma)
+                        print(oneStepTransitionProb)
+                        print(oneStep_TransitionEntropy)
+                        print((w_ma * oneStep_TransitionEntropy))
+
+            gainMA[aPrime_idx,mPrime_idx] = entropyMA[aPrime_idx,mPrime_idx] - sigma
+            sigmaMatrix[aPrime_idx,mPrime_idx] = sigma
+            print("sdfsdfsdf")
+            print(w_maSum)
+
+    print("_________________")
+    print(sigmaMatrix)
+    print("_________________")
+
+    printOneStep = False
+    if printOneStep:
+        import csv
+        c = csv.writer(open("TestingFigure5April29Trial1.csv", "w"))
+        
+        c.writerow(["entropyMA"])
+        c.writerow(entropyMA)
+
+        c.writerow(["Gain: "])
+        c.writerow(gainMA) 
+
+        c.writerow(["Action_Probs: "])
+        for a1_idx, a1 in enumerate(env.A_S):
+            for m1_idx, m1 in enumerate(env.SDE_Set):
+                c.writerow(Action_Probs[a1_idx, m1_idx, :])
+
+        for a1_idx, a1 in enumerate(env.A_S):
+            for a2_idx, a2 in enumerate(env.A_S):    
+                for m1_idx, m1 in enumerate(env.SDE_Set):
+                    for m2_idx, m2 in enumerate(env.SDE_Set):
+                        c.writerow(["One-Step Transition Gamma: " + str(m1) + " " + str(a1) + " " + str(m2) + " " +  str(a2) + " X"])
+                        c.writerow(OneStep_Gammas[a1_idx, a2_idx, m1_idx, m2_idx, :])
+                        w_ma = mSinglePrimeSum[a_idx, m_idx, mPrime_idx] / mPrimeSum[mPrime_idx]
+                        c.writerow(["Weight value that the transition m = " + str(m1) + " and a =  " + str(a1) + "causes the transition into m' = " + str(m2) + ":"])
+                        c.writerow([str(mSinglePrimeSum[a1_idx, m1_idx, m2_idx] / mPrimeSum[m2_idx])])
+                        # print("One-Step Transition Gamma: " + str(m1) + " " + str(a1) + " " + str(m2) + " " +  str(a1) + " X")
+                        # print(OneStep_Gammas[a1_idx, a2_idx, m1_idx, m2_idx, :])
+
+
+
+    # print(oneStep_TransitionProbs)
+    printOneStepTransitions = False
+    if printOneStepTransitions:
+        print("One Step Transition Probs: ")
+        for a1_idx, a1 in enumerate(env.A_S):
+            for a2_idx, a2 in enumerate(env.A_S):    
+                for m1_idx, m1 in enumerate(env.SDE_Set):
+                    for m2_idx, m2 in enumerate(env.SDE_Set):
+                        print("One-Step Transition Probs: " + str(m1) + " " + str(a1) + " " + str(m2) + " " +  str(a2) + " X")
+                        print(OneStep_TransitoinProbs[a1_idx, a2_idx, m1_idx, m2_idx, :])
+
+    print("entropyMA")
+    print(entropyMA)
+
+    print("Gain: ")
+    print(gainMA)                
+
     m1_prime = []
     m2_prime = []
     a_optimal = ""
@@ -554,35 +722,64 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
     for m_idx, m in enumerate(env.SDE_Set):
         for a_idx, a in enumerate(env.A_S):
             transitionSetProbs = Action_Probs[a_idx,m_idx,:]
-            transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
+            transitionSetEntropy = entropyMA[a_idx, m_idx]
+            gammaSum = np.sum(Action_Gammas[a_idx, m_idx, :])
 
-            if transitionSetEntropy > surpriseThresh: 
-                didSplit = True
+            # if transitionSetEntropy > surpriseThresh and (gammaSum > len(env.SDE_Set)*2):  #Check to see if entropy is high enough and that we actually updated these values by more than a small decimal
+                # didSplit = True
                 #Find m1_prime and m2_prime such that they match up to a first difference in observation
-                #Choose the SDE that has the highest entropy, as this indicates that more information must be learned for this transition.
-                SDE_List = env.get_SDE()
+
+
+
+                # #Choose the SDE that has the highest entropy, as this indicates that more information must be learned for this transition.
+                # SDE_List = env.get_SDE()
 
                 #Only look at the pair with the maximum probabilities to determine if entropy is sufficient to split.
-                orderedVals = transitionSetProbs.copy()
-                orderedVals.sort()
-                prob1 = orderedVals[-1] #largest probability
-                prob2 = orderedVals[-2] #second largest probability
-                sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
-                sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
-                sde1 = SDE_List[sde1_idx]
-                sde2 = SDE_List[sde2_idx]
+                # orderedVals = transitionSetProbs.copy()
+                # orderedVals.sort()
+                # prob1 = orderedVals[-1] #largest probability
+                # prob2 = orderedVals[-2] #second largest probability
+                # sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
+                # sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
+                # sde1 = SDE_List[sde1_idx]
+                # sde2 = SDE_List[sde2_idx]
 
-                normalized_Probs = np.array([prob1, prob2]) / np.sum(np.array([prob1, prob2]))
-                relativeEntropy = np.sum(np.multiply(normalized_Probs,(np.log2(normalized_Probs)))) * -1
-                if relativeEntropy > maxEntropy:
-                    m1_prime = sde1
-                    m2_prime = sde2
-                    a_optimal = a
-                    m_optimal = m
-                    maxEntropy = relativeEntropy
+                # normalized_Probs = np.array([prob1, prob2]) / np.sum(np.array([prob1, prob2]))
+                # relativeEntropy = np.sum(np.multiply(normalized_Probs,(np.log2(normalized_Probs)))) * -1
+                # if relativeEntropy > maxEntropy:
+                #     m1_prime = sde1
+                #     m2_prime = sde2
+                #     a_optimal = a
+                #     m_optimal = m
+                #     maxEntropy = relativeEntropy
+
+    maxGainIndex = np.unravel_index(np.argmax(gainMA),gainMA.shape)
+    if gainMA[maxGainIndex] > surpriseThresh:  #Check to see if gain is high enough
+        transitionSetProbs = Action_Probs[maxGainIndex[0],maxGainIndex[1],:]
+        orderedVals = transitionSetProbs.copy()
+        orderedVals.sort()
+        prob1 = orderedVals[-1] #largest probability
+        prob2 = orderedVals[-2] #second largest probability
+        sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
+        sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
+        m1_prime = env.get_SDE()[sde1_idx]
+        m2_prime = env.get_SDE()[sde2_idx]
+        m_optimal = env.get_SDE()[maxGainIndex[1]]
+        a_optimal = env.A_S[maxGainIndex[0]]
+    else:
+        return (False,env) #did not find an SDE to split that had high enough entropy
+
+    print("==============")
+    print(m_optimal)
+    print(a_optimal)
+    print(maxGainIndex)
+    print(m1_prime)
+    print(m2_prime)
+    print(transitionSetProbs)
+    print("==============")
 
     if not m1_prime or not m2_prime:
-        return (False,env) #Not sure if this case would ever occur, but if it does, return False
+        return (False,env) #did not find an SDE to split that had high enough entropy
    
     m1_new = [m_optimal[0]]
     m1_new.append(a_optimal)
@@ -592,16 +789,25 @@ def trySplitBySurprise(env, Action_Probs, surpriseThresh):
     m2_new = m2_new + m2_prime
 
     SDE_Set_new = env.get_SDE()
-    SDE_Set_new.append(m1_new)
-    SDE_Set_new.append(m2_new)
-    SDE_Set_new.remove(m_optimal)
-    #Note: did note do line 14 of Algorithm 1 as this would add the new SDE to the SDE list.
-    #       However, the way we currently store model states is by their SDE (i.e. actions and observations)
-    #       The Collins paper stores the SDEs as only the corresponding actions
 
+    if m1_new in env.SDE_Set and m2_new in env.SDE_Set:
+        return (False, env) #trying to add two "new" SDEs that are already in the SDE list = failed to split
+
+    didSplit = True
+    outcomesToAdd = 0
+    if not m1_new in env.SDE_Set:
+        SDE_Set_new.append(m1_new)
+        outcomesToAdd = outcomesToAdd + 1
+    if not m2_new in env.SDE_Set:
+        SDE_Set_new.append(m2_new)
+        outcomesToAdd = outcomesToAdd + 1
+    if outcomesToAdd > 1:
+        SDE_Set_new.remove(m_optimal)
+
+    print(m1_new)
+    print(m2_new)
     
     newEnv = genericModel(env.O_S, env.A_S, env.State_Size, SDE_Set_new, env.Alpha, env.Epsilon, env.Node_Set)
-    return (didSplit, newEnv)
     return (didSplit, newEnv)
 
 #TODO: Need to update this once Dirichlet distributions are determined
@@ -628,12 +834,15 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
 
     while True:
         print(env.SDE_Set)
-        (beliefState, probsTrans) = activeExperimentation(env, numSDEsPerExperiment, explore)
+        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore)
+        print("||||||||||||||||||||")
+        # print(OneStep_Gammas)
+        print("||||||||||||||||||||")
 
         if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
             break
 
-        (splitResult, env) = trySplitBySurprise(env, probsTrans, surpriseThresh)
+        (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas)
         if not splitResult:
             print("Stopped because not able to split")
             break
@@ -661,14 +870,20 @@ if __name__ == "__main__":
     env = Example1()
     SDE_Num = 1
     explore = 0.05
-    (beliefState, probsTrans) = activeExperimentation(env, SDE_Num, explore, have_control=True)
-    # (beliefState, probsTrans) = activeExperimentation(env, 10000, explore, have_control=False)
+    # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore, have_control=True)
+    (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
     print(probsTrans)
 
-    # env = Example3()
+    # env = Example1()
+    # SDE_Num = 50000
+    # explore = 0.05
+    # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore)
+    # print(probsTrans)
+
+    # env = Example4()
 
     # entropyThresh = 0.45 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    # surpriseThresh = 0.4
+    # surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
     # numSDEsPerExperiment = 100000
     # explore = 0.05
     # approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
