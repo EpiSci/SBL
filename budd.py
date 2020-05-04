@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import dirichlet, entropy
+import networkx as nx
 
 #The name of this file should be changed later.  I just wanted to make it obvious which file had my attempt.
 
@@ -234,7 +235,7 @@ class genericModel(sPOMDPModelExample):
 
 
 #Algorithm 2: Active Experimentation. Returns the belief state and transition probabilities.
-def activeExperimentation(env, SDE_Num, explore):
+def activeExperimentation(env, SDE_Num, explore, have_control=False):
     Current_Observation = env.reset()
 
     SDE_List = env.get_SDE()
@@ -242,8 +243,9 @@ def activeExperimentation(env, SDE_Num, explore):
     #Generate Full Transitions
     Full_Transition = [Current_Observation]
     
-    conservativeness_factor =  1#How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 0; or 1 or greater)
-    confidence_factor = 1000 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is)
+    conservativeness_factor = 0 #How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
+    confidence_factor = 25 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
+    # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
 
     #Exectue SDE_Num amount of SDE.
     for num in range(0,SDE_Num):
@@ -320,10 +322,12 @@ def activeExperimentation(env, SDE_Num, explore):
             #Mask the transition matrix
             Trans[:,(np.array(first_Observations) != Observation)] = 0
             SDE_Chance = SDE_Chance * np.sum(Trans, axis=1)
-        SDE_Chance[SDE_idx] = env.Alpha**(len(SDE_List[SDE_idx]))
+
+        num_Correspond = first_Observations.count(o)
         if num_Correspond > 1:
-            SDE_Chance[(np.array(first_Observations) == SDE[0])] = (1-SDE_Chance[SDE_idx])/(num_Correspond-1)
-        SDE_Chance[SDE_idx] = env.Alpha**(len(SDE_List[SDE_idx]))
+            SDE_Chance[(np.array(first_Observations) == SDE[0])] = (1 - env.Alpha**2)/(num_Correspond - 1)
+        SDE_Chance[SDE_idx] = env.Alpha**2
+        print(SDE_Chance)
         SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
         SDE_Belief_Mask.append(SDE_Chance)
 
@@ -342,7 +346,111 @@ def activeExperimentation(env, SDE_Num, explore):
     Belief_State = Belief_State/np.sum(Belief_State)
 
 
-    for Transition_Idx in range(len(Informed_Transition)//2):
+    Transition_Idx = 0
+    # print(Informed_Transition)
+    # print(Belief_State)
+    while Transition_Idx < len(Informed_Transition)//2:
+
+        #Create more trajectory if we have control and we're running out
+        if have_control is True and len(Informed_Transition)//2 - Transition_Idx <= 1:
+
+            new_Full_Transition = []
+
+            # First predict where we'll be after the last action in the trajectory is performed
+            Belief_Mask = np.zeros(len(SDE_List))
+            Observation = Informed_Transition[Transition_Idx*2+2]
+            Action = Informed_Transition[Transition_Idx*2+1]
+            
+            Model_Action_Idx = env.A_S.index(Action)
+            Future_Belief_State = np.dot(Belief_State, Action_Probs[Model_Action_Idx,:,:])
+        
+            if Observation in env.O_S:
+                for o in env.O_S:
+                    if Observation == o:
+                        Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
+            else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
+                Belief_Mask = SDE_Belief_Mask[Observation]
+
+            Future_Belief_State = Future_Belief_State*Belief_Mask
+            Future_Belief_State = Future_Belief_State/np.sum(Future_Belief_State)
+
+            # perform localization if unsure of where we are
+            nonzero_values = np.count_nonzero(Future_Belief_State)
+            if entropy(Future_Belief_State, base=nonzero_values) > 0.75:
+                # print("localizing")
+                Matching_SDE = env.get_SDE(Current_Observation)
+                Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+                Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]  # this is problematic in future as matching SDEs could have diff actions
+                for action in Chosen_SDE_Actions:
+                    Current_Observation = env.step(action)
+                    new_Full_Transition.append(action)
+                    new_Full_Transition.append(Current_Observation)
+
+            else: # try to perform experiments so that we learn what we don't know
+
+                # perform experiment if we're in a place where we can
+                performed_experiment = False
+                current_state = np.argmax(Future_Belief_State)
+                for action_idx in range(len(env.A_S)):
+
+                    if np.sum(Action_Gammas[action_idx, current_state])  / len(SDE_List) < confidence_factor:
+                        action = env.A_S[action_idx]
+                        Current_Observation = env.step(action)
+                        new_Full_Transition.append(action)
+                        new_Full_Transition.append(Current_Observation)
+                        performed_experiment = True
+                        # print("experiment performed: took action " + str(action) + " from state " + str(current_state))
+
+                        # now localize again
+                        Matching_SDE = env.get_SDE(Current_Observation)
+                        Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+                        Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]  # this is problematic in future as matching SDEs could have diff actions
+                        for action in Chosen_SDE_Actions:
+                            Current_Observation = env.step(action)
+                            new_Full_Transition.append(action)
+                            new_Full_Transition.append(Current_Observation)
+
+                        break
+
+                # if unsuccesful, try to go to a state of interest
+                if performed_experiment is False:
+                    confidences = np.sum(Action_Gammas, axis=2) / len(SDE_List)
+                    # TODO: Consider optimizing the chosen state based upon proximity
+
+                    states_of_interest = np.array(np.where(confidences < confidence_factor))[1,:]
+                    state_of_interest = states_of_interest[0]
+
+                    G = getGraph(env, Action_Probs)
+                    shortest_path = nx.dijkstra_path(G, current_state, state_of_interest, weight='weight')
+                    # print("shortest_path")
+                    # print(shortest_path)
+                    # print("shortest path length")
+                    # print(nx.dijkstra_path_length(G, current_state, state_of_interest, weight='weight'))
+                    action_idx = np.argmax(Action_Probs[:,current_state, shortest_path[1]], axis=0)
+                    action = env.A_S[action_idx]
+                    Current_Observation = env.step(action)
+                    new_Full_Transition.append(action)
+                    new_Full_Transition.append(Current_Observation)
+                    # print("Performing action " + str(action_idx) + " from state " + str(current_state) + " to get to state " + str(shortest_path[1]))
+
+            # print("Informed_Transition before:")
+            # print(Informed_Transition)
+
+            #Detect Successful Transitions
+            Full_Transition.extend(new_Full_Transition)
+            Informed_Transition.extend(new_Full_Transition)
+            for Transition_Num in range(Transition_Idx, len(Full_Transition)):
+                for SDE_Idx, SDE in enumerate(SDE_List):
+                    if len(SDE) <= len(Full_Transition)-Transition_Num:
+                        for EO_Idx, Expected_Observation in enumerate(SDE):
+                            if(Expected_Observation == Full_Transition[Transition_Num + EO_Idx]):
+                                if EO_Idx == len(SDE)-1:
+                                    Informed_Transition[Transition_Num] = SDE_Idx
+                            else:
+                                break
+            # print("Informed_Transition after:")
+            # print(Informed_Transition)
+
         #Belief State
         Belief_Mask = np.zeros(len(SDE_List))
         Observation = Informed_Transition[Transition_Idx*2+2]
@@ -467,17 +575,19 @@ def activeExperimentation(env, SDE_Num, explore):
         """
 
         if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor):
-            print("Finished early at action # " + str(Transition_Idx))
+            print("Finished early after " + str(Transition_Idx+1) + " actions")
             break
 
+        Transition_Idx = Transition_Idx + 1
+
     # print(Transition_Idx)
-    print("---")
+    # print("---")
     # print("Action_Gammas")
     # print(Action_Gammas)
     # print("***")
-    print("Action_Probs")
-    print(Action_Probs)
-    print("---")
+    # print("Action_Probs")
+    # print(Action_Probs)
+    # print("---")
             
     return (Belief_State, Action_Probs, Action_Gammas, OneStep_Gammas)
 
@@ -741,15 +851,36 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
     print(env.SDE_Set)
 
 
+def getGraph(env, transitionProbs):
+    SDE_List = env.get_SDE()
+    G = nx.DiGraph()
+    edges = []
+
+    max_probs = np.max(transitionProbs, axis=0)
+
+    for start in range(len(SDE_List)):
+        for des in range(len(SDE_List)):
+            edges.append((start, des, 1 - max_probs[start,des]))
+    G.add_weighted_edges_from(edges)
+    return G
+
+
 #The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
+    env = Example1()
+    SDE_Num = 1
+    explore = 0.05
+    # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore, have_control=True)
+    (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
+    print(probsTrans)
+
     # env = Example1()
     # SDE_Num = 50000
     # explore = 0.05
     # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore)
     # print(probsTrans)
 
-    env = Example4()
+    # env = Example4()
 
     entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
