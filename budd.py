@@ -751,7 +751,7 @@ if __name__ == "__main__":
 
     env = Example4()
 
-    entropyThresh = 0.45 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
     numSDEsPerExperiment = 100000
     explore = 0.05
