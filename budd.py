@@ -2,8 +2,6 @@ import numpy as np
 from scipy.stats import dirichlet, entropy
 import networkx as nx
 
-#The name of this file should be changed later.  I just wanted to make it obvious which file had my attempt.
-
 
 #This class represents a node and each node is a state in the model.
 class sPOMDPNode():
@@ -591,38 +589,18 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             
     return (Belief_State, Action_Probs, Action_Gammas, OneStep_Gammas)
 
-
-
-
-#Lines 6-19 of Algorithm 1. If splitting is successful, returns True and the new environment. Otherwise returns False and the previous environment.
-def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep_Gammas):
-    didSplit = False
-    newEnv = env
+# Calculate the gain of an environment given the transition probabilities and the one-step extension gammas
+# Returns the associated entropy of each (m,a) pair and the associated gain
+def calculateGain(env, Action_Probs, OneStep_Gammas):
+    entropyMA = np.zeros((len(env.A_S),len(env.SDE_Set))) #index as action, model number 
+    gainMA = np.zeros((len(env.A_S),len(env.SDE_Set))) #index as action, model number
 
     oneStep_TransitionProbs = OneStep_Gammas / np.reshape(np.repeat(np.sum(OneStep_Gammas, axis = 4),len(env.SDE_Set),axis=3),OneStep_Gammas.shape)
     mSinglePrimeSum_aPrime = np.sum(OneStep_Gammas,axis = 4) #The total number of times the m' state is entered from state m under action a with respect to action a'
     mSinglePrimeSum = np.sum(mSinglePrimeSum_aPrime,axis = 0) #The total number of times the m' state is entered from state m under action a
     # mPrimeSum = np.sum(Action_Gammas, axis = 2) #The total number of times the action a is executed from state m
     mPrimeSum = np.sum(np.sum(mSinglePrimeSum, axis = 0), axis=0) #The total number of times the m' state is entered
-    
-    print("OneStep_Gammas")
-    print(OneStep_Gammas)
-    print("----------------------")
-    print(mSinglePrimeSum_aPrime)
-    print("&&&&&&&&&&&&&&")
-    print(mSinglePrimeSum)
-    print("^^^^^^^^^^^^^^^")
-    print(mPrimeSum)
-    print("00000000000000")
-    # print(Action_Gammas)
-    # print(np.sum(Action_Gammas))
-    # print("?????????????")
-    # print(OneStep_Gammas)
-    # print(np.sum(OneStep_Gammas))
 
-    entropyMA = np.zeros((len(env.A_S),len(env.SDE_Set))) #index as action, model number 
-    gainMA = np.zeros((len(env.A_S),len(env.SDE_Set))) #index as action, model number
-    sigmaMatrix = np.zeros((len(env.A_S),len(env.SDE_Set)))
     # Calculate the transition entropies H(Ttma). Calculate the gain values using the OneStep_Gammas
     for mPrime_idx, mPrime in enumerate(env.SDE_Set):
         for aPrime_idx, aPrime in enumerate(env.A_S):
@@ -642,32 +620,10 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
                     oneStep_TransitionEntropy = np.sum(np.multiply(oneStepTransitionProb,(np.log(oneStepTransitionProb) / np.log(len(env.SDE_Set))))) * -1
                     sigma = (w_ma * oneStep_TransitionEntropy) + sigma
 
-                    if a == "east" and aPrime == "east" and m == ["nothing","east","nothing"]:
-                        print("Double East:")
-                        print(mPrime)
-                        print(w_ma)
-                        print(oneStepTransitionProb)
-                        print(oneStep_TransitionEntropy)
-                        print((w_ma * oneStep_TransitionEntropy))
-
-                    if a == "west" and aPrime == "east" and m == ["nothing","east","nothing"]:
-                        print("Single West:")
-                        print(mPrime)
-                        print(w_ma)
-                        print(oneStepTransitionProb)
-                        print(oneStep_TransitionEntropy)
-                        print((w_ma * oneStep_TransitionEntropy))
-
             gainMA[aPrime_idx,mPrime_idx] = entropyMA[aPrime_idx,mPrime_idx] - sigma
-            sigmaMatrix[aPrime_idx,mPrime_idx] = sigma
-            print("sdfsdfsdf")
-            print(w_maSum)
 
-    print("_________________")
-    print(sigmaMatrix)
-    print("_________________")
 
-    printOneStep = False
+        printOneStep = False
     if printOneStep:
         import csv
         c = csv.writer(open("TestingFigure5April29Trial1.csv", "w"))
@@ -713,6 +669,34 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
 
     print("Gain: ")
     print(gainMA)                
+
+
+    return(gainMA, entropyMA)
+
+
+
+#Lines 6-19 of Algorithm 1. If splitting is successful, returns True and the new environment. Otherwise returns False and the previous environment.
+def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep_Gammas):
+    didSplit = False
+    newEnv = env
+    
+    print("OneStep_Gammas")
+    print(OneStep_Gammas)
+    print("----------------------")
+    # print(mSinglePrimeSum_aPrime)
+    # print("&&&&&&&&&&&&&&")
+    # print(mSinglePrimeSum)
+    # print("^^^^^^^^^^^^^^^")
+    # print(mPrimeSum)
+    # print("00000000000000")
+    # print(Action_Gammas)
+    # print(np.sum(Action_Gammas))
+    # print("?????????????")
+    # print(OneStep_Gammas)
+    # print(np.sum(OneStep_Gammas))
+
+    (gainMA, entropyMA) = calculateGain(env, Action_Probs, OneStep_Gammas)
+
 
     m1_prime = []
     m2_prime = []
@@ -865,25 +849,18 @@ def getGraph(env, transitionProbs):
     return G
 
 
-#The code for alogithm two is run below.  It is getting close to completion.  Just need to finish up the last steps.
 if __name__ == "__main__":
-    env = Example1()
-    SDE_Num = 1
-    explore = 0.05
-    # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore, have_control=True)
-    (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
-    print(probsTrans)
-
     # env = Example1()
-    # SDE_Num = 50000
+    # SDE_Num = 1
     # explore = 0.05
-    # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore)
+    # # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore, have_control=True)
+    # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
     # print(probsTrans)
 
-    # env = Example4()
+    env = Example2()
 
     entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    numSDEsPerExperiment = 100000
+    numSDEsPerExperiment = 50000
     explore = 0.05
     approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
