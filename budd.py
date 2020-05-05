@@ -242,7 +242,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
     Full_Transition = [Current_Observation]
     
     conservativeness_factor = 0 #How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
-    confidence_factor = 25 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
+    confidence_factor = 100 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
     # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
 
     #Exectue SDE_Num amount of SDE.
@@ -670,13 +670,12 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
     print("Gain: ")
     print(gainMA)                
 
-
     return(gainMA, entropyMA)
 
 
 
 #Lines 6-19 of Algorithm 1. If splitting is successful, returns True and the new environment. Otherwise returns False and the previous environment.
-def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep_Gammas):
+def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep_Gammas, gainMA):
     didSplit = False
     newEnv = env
     
@@ -703,39 +702,6 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
     a_optimal = ""
     m_optimal = ""
     maxEntropy = 0
-    for m_idx, m in enumerate(env.SDE_Set):
-        for a_idx, a in enumerate(env.A_S):
-            transitionSetProbs = Action_Probs[a_idx,m_idx,:]
-            transitionSetEntropy = entropyMA[a_idx, m_idx]
-            gammaSum = np.sum(Action_Gammas[a_idx, m_idx, :])
-
-            # if transitionSetEntropy > surpriseThresh and (gammaSum > len(env.SDE_Set)*2):  #Check to see if entropy is high enough and that we actually updated these values by more than a small decimal
-                # didSplit = True
-                #Find m1_prime and m2_prime such that they match up to a first difference in observation
-
-
-
-                # #Choose the SDE that has the highest entropy, as this indicates that more information must be learned for this transition.
-                # SDE_List = env.get_SDE()
-
-                #Only look at the pair with the maximum probabilities to determine if entropy is sufficient to split.
-                # orderedVals = transitionSetProbs.copy()
-                # orderedVals.sort()
-                # prob1 = orderedVals[-1] #largest probability
-                # prob2 = orderedVals[-2] #second largest probability
-                # sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
-                # sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
-                # sde1 = SDE_List[sde1_idx]
-                # sde2 = SDE_List[sde2_idx]
-
-                # normalized_Probs = np.array([prob1, prob2]) / np.sum(np.array([prob1, prob2]))
-                # relativeEntropy = np.sum(np.multiply(normalized_Probs,(np.log2(normalized_Probs)))) * -1
-                # if relativeEntropy > maxEntropy:
-                #     m1_prime = sde1
-                #     m2_prime = sde2
-                #     a_optimal = a
-                #     m_optimal = m
-                #     maxEntropy = relativeEntropy
 
     maxGainIndex = np.unravel_index(np.argmax(gainMA),gainMA.shape)
     if gainMA[maxGainIndex] > surpriseThresh:  #Check to see if gain is high enough
@@ -794,6 +760,7 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
     newEnv = genericModel(env.O_S, env.A_S, env.State_Size, SDE_Set_new, env.Alpha, env.Epsilon, env.Node_Set)
     return (didSplit, newEnv)
 
+#NOTE: This function getModelEntropy is no longer used as it can't be generalized to non-alpha-epsilon environments. The gain values are now used to determine splitting
 #TODO: Need to update this once Dirichlet distributions are determined
 def getModelEntropy(env, transitionProbs):
     maximum = 0
@@ -813,7 +780,7 @@ def getModelEntropy(env, transitionProbs):
 
 
 #Algorithm 3: Approximate sPOMPDP Learning.
-def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh):
+def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh):
     #Initialize model
 
     while True:
@@ -823,10 +790,12 @@ def approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore,
         # print(OneStep_Gammas)
         print("||||||||||||||||||||")
 
-        if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
+        # if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
+        (gainMA, entropyMA) = calculateGain(env, probsTrans, OneStep_Gammas)
+        if  np.max(gainMA) < gainThresh:#Done learning
             break
 
-        (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas)
+        (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas, gainMA)
         if not splitResult:
             print("Stopped because not able to split")
             break
@@ -859,8 +828,9 @@ if __name__ == "__main__":
 
     env = Example2()
 
-    entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    # entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    gainThresh = 0 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    numSDEsPerExperiment = 50000
+    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, entropyThresh, numSDEsPerExperiment, explore, surpriseThresh)
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh)
