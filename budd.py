@@ -245,7 +245,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
     confidence_factor = 500 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
     # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
 
-    #Exectue SDE_Num amount of SDE.
+    #Execute SDE_Num amount of SDE.
     for num in range(0,SDE_Num):
         Matching_SDE = env.get_SDE(Current_Observation)
         Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
@@ -268,6 +268,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
     #Get SDE Transitions
     SDE_List = env.get_SDE()
 
+    #<<New Work: Preprocess the trajectory>>
     #Detect Successful Transitions
     Informed_Transition = Full_Transition.copy()
     for Transition_Idx in range(len(Full_Transition)):
@@ -336,7 +337,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
     if Observation in env.O_S:
         for o in env.O_S:
             if Observation == o:
-                Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
+                Belief_Mask[(np.array(first_Observations) == Observation)] = 1 
     else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
         Belief_Mask = SDE_Belief_Mask[Observation]
     Belief_State = Belief_State*Belief_Mask
@@ -347,6 +348,8 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
     # print(Informed_Transition)
     # print(Belief_State)
     while Transition_Idx < len(Informed_Transition)//2:
+
+        #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
 
         #Create more trajectory if we have control and we're running out
         if have_control is True and len(Informed_Transition)//2 - Transition_Idx <= 1:
@@ -460,13 +463,14 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
         if Observation in env.O_S:
             for o in env.O_S:
                 if Observation == o:
-                    Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
+                    Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #This may need to be some function of alpha and/or epsilon...
         else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
             Belief_Mask = SDE_Belief_Mask[Observation]
 
         Belief_State = Belief_State*Belief_Mask
         Belief_State = Belief_State/np.sum(Belief_State)
 
+        #<<New Work: Entropy scaling of belief state. Used to discourage learning from transitions if the initial belief state is not certain.>>
         #Updated Transition
         nonzero_values = np.count_nonzero(Previous_Belief_State)
         if (nonzero_values == 1):
@@ -475,6 +479,8 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             entropy_scaling = 1 - entropy(Previous_Belief_State, base=nonzero_values)
         # Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
+
+        #<<New Work: Only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
         if Transition_Idx < len(Informed_Transition)//4:
         #if Transition_Idx < len(Informed_Transition):
             max_row = np.argmax(np.max(Belief_Count, axis=1))
@@ -508,16 +514,6 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             Transition2_Belief_State = Transition2_Belief_State*Belief_Mask
             Transition2_Belief_State =  Transition2_Belief_State/np.sum(Transition2_Belief_State)
             
-            # if prevAction == "west" and prevObservation == 1 and Action == "west" and Observation == 1:
-            #     print(tMinus2BeliefState)
-            #     print(prevAction)
-            #     print(prevObservation)
-            #     print(prevBelief_Mask)
-            #     print(Transition1_Belief_State)
-            #     print(Action)
-            #     print(Observation)
-            #     print(Transition2_Belief_State)
-            #     exit()
 
             #Construct the m by m' by m'' matrix that will be used to update the OneStep_Gammas matrix.
             #This involves scaling the resulting transition2 belief state by the transition1 belief state and then normalizing the entire matrix
@@ -537,18 +533,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             subMatrix = subMatrix * tmp2
             subMatrix = subMatrix / (np.sum(subMatrix))
 
-            # print(subMatrix)
-            # print(":::::::::::::::::")
             OneStep_Gammas[prevModel_Action_Idx,Model_Action_Idx,:] = OneStep_Gammas[prevModel_Action_Idx,Model_Action_Idx,:] + subMatrix
-            # print(OneStep_Gammas)
-            # print(tMinus2BeliefState)
-            # print(prevAction)
-            # print(prevObservation)
-            # print(Transition1_Belief_State)
-            # print(Action)
-            # print(Observation)
-            # print(Transition2_Belief_State)
-            # exit()
 
         tMinus2BeliefState = Previous_Belief_State.copy()
         prevBelief_Mask = Belief_Mask.copy()
@@ -564,13 +549,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             # print(Action_Probs)
             # print("---")
 
-        """print(Full_Transition)
-        print(Informed_Transition)
-        print(Previous_Belief_State)
-        print(Action)
-        print(Observation)
-        """
-
+        #<<New Work: Implement a confidence factor that allows for early termination of the algorithm if each transition has been performed a reasonable # of times>>
         if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor):
             print("Finished early after " + str(Transition_Idx+1) + " actions")
             break
@@ -684,17 +663,6 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
     print("OneStep_Gammas")
     print(OneStep_Gammas)
     print("----------------------")
-    # print(mSinglePrimeSum_aPrime)
-    # print("&&&&&&&&&&&&&&")
-    # print(mSinglePrimeSum)
-    # print("^^^^^^^^^^^^^^^")
-    # print(mPrimeSum)
-    # print("00000000000000")
-    # print(Action_Gammas)
-    # print(np.sum(Action_Gammas))
-    # print("?????????????")
-    # print(OneStep_Gammas)
-    # print(np.sum(OneStep_Gammas))
 
     (gainMA, entropyMA) = calculateGain(env, Action_Probs, OneStep_Gammas)
 
@@ -763,8 +731,8 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
     return (didSplit, newEnv)
 
 #NOTE: This function getModelEntropy is no longer used as it can't be generalized to non-alpha-epsilon environments. The gain values are now used to determine splitting
-#TODO: Need to update this once Dirichlet distributions are determined
 def getModelEntropy(env, transitionProbs):
+    #<<New Work: Collins uses a weighted average for model entropy. We use the maximum transition entropy as this would scale better for larger environments with more transitions. Note that this code is not being used (as model splitting is now determined by the maximum gain in the environment).>>
     maximum = 0
     for m_idx, m in enumerate(env.SDE_Set):
         for a_idx, a in enumerate(env.A_S):
@@ -794,6 +762,7 @@ def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, su
 
         # if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
         (gainMA, entropyMA) = calculateGain(env, probsTrans, OneStep_Gammas)
+        #<<New Work: Use the maximum gain within the model to determine if the model should be split or not. This better generalizes to non alpha-epsilon environments>>
         if  np.max(gainMA) < gainThresh:#Done learning
             break
 
