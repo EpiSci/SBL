@@ -242,7 +242,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
     Full_Transition = [Current_Observation]
     
     conservativeness_factor = 0 #How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
-    confidence_factor = 100 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
+    confidence_factor = 500 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
     # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
 
     #Exectue SDE_Num amount of SDE.
@@ -280,7 +280,6 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
                     else:
                         break
 
-    #The Code Below is a little hacky as it needs to be updated to work with any observation or action set.
     #Learn Transitions
 
     #Initiate Transition Matrixes
@@ -476,8 +475,8 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             entropy_scaling = 1 - entropy(Previous_Belief_State, base=nonzero_values)
         # Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
-        # if Transition_Idx < len(Informed_Transition)//4:
-        if Transition_Idx < len(Informed_Transition):
+        if Transition_Idx < len(Informed_Transition)//4:
+        #if Transition_Idx < len(Informed_Transition):
             max_row = np.argmax(np.max(Belief_Count, axis=1))
             Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
 
@@ -668,7 +667,10 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
     print(entropyMA)
 
     print("Gain: ")
-    print(gainMA)                
+    print(gainMA)
+    
+    print("Transition Probabilities: ")
+    print(Action_Probs)
 
     return(gainMA, entropyMA)
 
@@ -829,8 +831,8 @@ if __name__ == "__main__":
     env = Example2()
 
     # entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    gainThresh = 0 #Threshold of gain to determine if the model should stop learning
+    gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    numSDEsPerExperiment = 100000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh)
