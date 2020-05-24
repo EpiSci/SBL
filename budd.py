@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import dirichlet, entropy
 import networkx as nx
+import xlwt
 
 
 #This class represents a node and each node is a state in the model.
@@ -232,8 +233,24 @@ class genericModel(sPOMDPModelExample):
             self.Node_Set = environmentNodes
 
 
+#Writes a numpy matrix to an xls file. Returns the last row the matrix was written on. Currently supports only 3D numpy matrices.
+def writeNumpyMatrixToFile(sheet, matrix, row=0,col=0):
+    dimensions = matrix.shape
+    rowCount = row
+    for i in range(dimensions[0]):
+        for j in range(dimensions[1]):
+            
+            for k in range(dimensions[2]):
+                sheet.write(rowCount,col+k, matrix[i][j][k])
+            rowCount = rowCount + 1
+        rowCount = rowCount + 1 #Provide an extra space between submatrices
+    return rowCount
+
+
+
+
 #Algorithm 2: Active Experimentation. Returns the belief state and transition probabilities.
-def activeExperimentation(env, SDE_Num, explore, have_control=False):
+def activeExperimentation(env, SDE_Num, explore, have_control=False, writeToFile=False, workbook=None, earlyTermination=False,budd=True):
     Current_Observation = env.reset()
 
     SDE_List = env.get_SDE()
@@ -481,7 +498,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
 
         #<<New Work: Only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
-        if Transition_Idx < len(Informed_Transition)//4:
+        if Transition_Idx < len(Informed_Transition)//4 and budd == True:
         #if Transition_Idx < len(Informed_Transition):
             max_row = np.argmax(np.max(Belief_Count, axis=1))
             Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
@@ -550,9 +567,34 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False):
             # print("---")
 
         #<<New Work: Implement a confidence factor that allows for early termination of the algorithm if each transition has been performed a reasonable # of times>>
-        if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor):
+        if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor) and earlyTermination:
             print("Finished early after " + str(Transition_Idx+1) + " actions")
             break
+
+        if writeToFile:
+            if Transition_Idx == 0:
+                rowIndex = 2
+                modelNum = len(SDE_List) - len(env.O_S)
+                sh = workbook.add_sheet("Model " + str(modelNum))
+                print("Adding workbook sheet " + "Model " + str(modelNum))
+                sh.write(0,0, "Model States: ")
+                for SDE_id, SDE in enumerate(SDE_List):
+                    sh.write(0,SDE_id+1, SDE)
+            
+            if Transition_Idx % 5000 == 0:
+                sh.write(rowIndex, 0, "Transition Probabilities at Iteration: " +str(Transition_Idx))
+                rowIndex = rowIndex + 1
+                newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=rowIndex,col=0)
+                rowIndex = newRow + 2 
+
+            if Transition_Idx + 1 == len(Informed_Transition)//2: #The last action in the trajectory
+                colIndex = 4+len(SDE_List)
+                sh.write(0,colIndex, "Final Transition Probabilities")
+                newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
+                workbook.save("Test1.1May24Fig2WithBudd.xls")
+                print("Done writing to file")
+
+
 
         Transition_Idx = Transition_Idx + 1
 
@@ -750,12 +792,15 @@ def getModelEntropy(env, transitionProbs):
 
 
 #Algorithm 3: Approximate sPOMPDP Learning.
-def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh):
+def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=False, earlyTermination=False,budd=True):
     #Initialize model
-
+    book = None
     while True:
         print(env.SDE_Set)
-        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore)
+        if writeToFile and book == None:
+            book = xlwt.Workbook()
+            # filename = "TestingFigure2May23.xls"
+        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore, writeToFile=True, workbook=book, earlyTermination=False,budd=True)
         print("||||||||||||||||||||")
         # print(OneStep_Gammas)
         print("||||||||||||||||||||")
@@ -764,11 +809,15 @@ def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, su
         (gainMA, entropyMA) = calculateGain(env, probsTrans, OneStep_Gammas)
         #<<New Work: Use the maximum gain within the model to determine if the model should be split or not. This better generalizes to non alpha-epsilon environments>>
         if  np.max(gainMA) < gainThresh:#Done learning
+            # if writeToFile:
+            #     book.save(filename)
             break
 
         (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas, gainMA)
         if not splitResult:
             print("Stopped because not able to split")
+            # if writeToFile:
+            #     book.save(filename)
             break
         # input("Done with the current iteration. Press any key to begin the next iteration.")
 
@@ -802,6 +851,6 @@ if __name__ == "__main__":
     # entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    numSDEsPerExperiment = 100000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh)
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True)
