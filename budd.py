@@ -250,7 +250,10 @@ def writeNumpyMatrixToFile(sheet, matrix, row=0,col=0):
 
 
 #Algorithm 2: Active Experimentation. Returns the belief state and transition probabilities.
-def activeExperimentation(env, SDE_Num, explore, have_control=False, writeToFile=False, workbook=None, earlyTermination=False,budd=True):
+#budd: True - transition updates will not perform "column updates" and only update the transition associated with the most likely belief state
+#conservativeness_factor: How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
+#confidence_factor: The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
+def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earlyTermination, budd, conservativeness_factor, confidence_factor, workbook, filename):
     Current_Observation = env.reset()
 
     SDE_List = env.get_SDE()
@@ -258,8 +261,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False, writeToFile
     #Generate Full Transitions
     Full_Transition = [Current_Observation]
     
-    conservativeness_factor = 0 #How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
-    confidence_factor = 500 #The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
+    
     # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
 
     #Execute SDE_Num amount of SDE.
@@ -566,11 +568,6 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False, writeToFile
             # print(Action_Probs)
             # print("---")
 
-        #<<New Work: Implement a confidence factor that allows for early termination of the algorithm if each transition has been performed a reasonable # of times>>
-        if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor) and earlyTermination:
-            print("Finished early after " + str(Transition_Idx+1) + " actions")
-            break
-
         if writeToFile:
             if Transition_Idx == 0:
                 rowIndex = 2
@@ -590,9 +587,25 @@ def activeExperimentation(env, SDE_Num, explore, have_control=False, writeToFile
             if Transition_Idx + 1 == len(Informed_Transition)//2: #The last action in the trajectory
                 colIndex = 4+len(SDE_List)
                 sh.write(0,colIndex, "Final Transition Probabilities")
+                sh.write(0,colIndex+1, "Number of Actions:")
+                sh.write(0,colIndex+2,Transition_Idx)
                 newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
-                workbook.save("Test1.1May24Fig2WithBudd.xls")
+                workbook.save(filename)
                 print("Done writing to file")
+
+
+        #<<New Work: Implement a confidence factor that allows for early termination of the algorithm if each transition has been performed a reasonable # of times>>
+        if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor) and earlyTermination:
+            print("Finished early after " + str(Transition_Idx+1) + " actions")
+            colIndex = 4+len(SDE_List)
+            sh.write(0,colIndex, "Final Transition Probabilities")
+            sh.write(0,colIndex+1, "Number of Actions:")
+            sh.write(0,colIndex+2,Transition_Idx)
+            newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
+            workbook.save(filename)
+            print("Done writing to file")
+            break
+
 
 
 
@@ -792,15 +805,14 @@ def getModelEntropy(env, transitionProbs):
 
 
 #Algorithm 3: Approximate sPOMPDP Learning.
-def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=False, earlyTermination=False,budd=True):
+def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=False,budd=True, earlyTermination=False,conservativeness_factor=0, confidence_factor=100,have_control=False, filename=None):
     #Initialize model
     book = None
     while True:
         print(env.SDE_Set)
         if writeToFile and book == None:
             book = xlwt.Workbook()
-            # filename = "TestingFigure2May23.xls"
-        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore, writeToFile=True, workbook=book, earlyTermination=False,budd=True)
+        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore, writeToFile=writeToFile, workbook=book, earlyTermination=earlyTermination,budd=budd,conservativeness_factor=conservativeness_factor, confidence_factor=confidence_factor, have_control=have_control, filename=filename)
         print("||||||||||||||||||||")
         # print(OneStep_Gammas)
         print("||||||||||||||||||||")
@@ -837,6 +849,41 @@ def getGraph(env, transitionProbs):
     G.add_weighted_edges_from(edges)
     return G
 
+#Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
+def test1_v1():
+    env = Example2()
+    gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
+    surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
+    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    explore = 0.05
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=False, filename="Testing Data/Test1_v1May26.xls")
+
+#Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
+def test1_v2():
+    env = Example2()
+    gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
+    surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
+    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    explore = 0.05
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2May26.xls")
+
+#Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
+def test2_v1():
+    env = Example2()
+    gainThresh = 0.01 #Threshold of gain to determine if the model should stop learning
+    surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
+    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    explore = 0.05
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=True, budd=True, have_control = False, conservativeness_factor=0, confidence_factor=5, filename="Testing Data/Test2_v1May26.xls")
+
+#Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
+def test2_v2():
+    env = Example2()
+    gainThresh = 0.01 #Threshold of gain to determine if the model should stop learning
+    surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
+    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    explore = 0.05
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=True, budd=True, have_control = True, conservativeness_factor=0, confidence_factor=5, filename="Testing Data/Test2_v2May26.xls")
 
 if __name__ == "__main__":
     # env = Example1()
@@ -846,11 +893,12 @@ if __name__ == "__main__":
     # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
     # print(probsTrans)
 
-    env = Example2()
+    # env = Example2()
 
-    # entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
-    surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
-    explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True)
+    # # entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
+    # gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
+    # surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
+    # numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    # explore = 0.05
+    # approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True)
+    test2_v2()
