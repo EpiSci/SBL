@@ -43,6 +43,10 @@ class sPOMDPNode():
 
 #This class combines all of the nodes into a model.
 class sPOMDPModelExample():
+    def __init__(self):
+        self.Node_Set = []
+        self.SDE_Set = []
+
     def reset(self):
         #Select A Random Starting State
         self.Current_State = np.random.choice(self.Node_Set)
@@ -66,9 +70,25 @@ class sPOMDPModelExample():
                     Matching_SDE.append(SDE)
             return Matching_SDE
 
+    def get_true_transition_probs(self):
+        transitionProbs = np.zeros((len(self.A_S), len(self.Node_Set), len(self.Node_Set)))
+        for (a_idx, a) in enumerate(self.A_S):
+            for (s_idx, s) in enumerate(self.Node_Set):
+                transitionProbs[a_idx, s_idx, :] = s.Transition_Dictionary[a]
+        return transitionProbs
+
+    def get_observation_probs(self):
+        observationProbs = np.ones((len(self.O_S), len(self.Node_Set))) * ((1 - self.Epsilon) / (len(self.O_S) - 1))
+        for (s_idx, s) in enumerate(self.Node_Set):
+            o_idx = self.O_S.index(s.Observation)
+            observationProbs[o_idx, s_idx] = self.Epsilon
+        return observationProbs
+
+
 #This class extends the generic sPOMDP model. This model is the one from figure 2.
 class Example1(sPOMDPModelExample):
     def __init__(self):
+        sPOMDPModelExample.__init__(self)
         #Set Environment Details
         self.O_S = ["square", "diamond"] #Observation Set
         self.A_S = ["x", "y"] #Action Set
@@ -82,14 +102,12 @@ class Example1(sPOMDPModelExample):
         sPOMDPNode.Epsilon = self.Epsilon
 
         #Use Already Known SDE
-        self.SDE_Set = []
         self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[0]])
         self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[1]])
         self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
         self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1]])
 
         #Generate States
-        self.Node_Set = []
         self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 2})) #state 0
         self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 3})) #state 1
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
@@ -98,6 +116,7 @@ class Example1(sPOMDPModelExample):
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
 class Example2(sPOMDPModelExample):
     def __init__(self):
+        sPOMDPModelExample.__init__(self)
         #Set Environment Details
         self.O_S = ["diamond", "square"] #Observation Set
         self.A_S = ["x", "y"] #Action Set
@@ -111,12 +130,10 @@ class Example2(sPOMDPModelExample):
         sPOMDPNode.Epsilon = self.Epsilon
 
         #Use Already Known SDE
-        self.SDE_Set = []
         self.SDE_Set.append([self.O_S[0]])
         self.SDE_Set.append([self.O_S[1]])
 
         #Generate States
-        self.Node_Set = []
         self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 2})) #state 0
         self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 3})) #state 1
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
@@ -125,6 +142,7 @@ class Example2(sPOMDPModelExample):
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 3, but only with 3 known SDEs (rose, volcano, or nothing)
 class Example3(sPOMDPModelExample):
     def __init__(self):
+        sPOMDPModelExample.__init__(self)
         #Set Environment Details
         self.O_S = ["rose", "volcano","nothing"] #Observation Set
         self.A_S = ["b", "f", "t"] #Action Set
@@ -138,13 +156,11 @@ class Example3(sPOMDPModelExample):
         sPOMDPNode.Epsilon = self.Epsilon
 
         #Use Already Known SDE
-        self.SDE_Set = []
         self.SDE_Set.append([self.O_S[0]])
         self.SDE_Set.append([self.O_S[1]])
         self.SDE_Set.append([self.O_S[2]])
 
         #Generate States
-        self.Node_Set = []
         self.Node_Set.append(sPOMDPNode(Observation = "rose", Action_Dictionary = {"f": 3, "b": 2, "t": 0})) #state 0
         self.Node_Set.append(sPOMDPNode(Observation = "volcano", Action_Dictionary = {"f": 2, "b": 3, "t": 1})) #state 1
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 0, "b": 1, "t": 3})) #state 2
@@ -153,6 +169,7 @@ class Example3(sPOMDPModelExample):
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 4, but only with 2 known SDEs (goal, nothing)
 class Example4(sPOMDPModelExample):
     def __init__(self):
+        sPOMDPModelExample.__init__(self)
         #Set Environment Details
         self.O_S = ["goal","nothing"] #Observation Set
         self.A_S = ["east", "west"] #Action Set
@@ -166,12 +183,10 @@ class Example4(sPOMDPModelExample):
         sPOMDPNode.Epsilon = self.Epsilon
 
         #Use Already Known SDE
-        self.SDE_Set = []
         self.SDE_Set.append([self.O_S[0]])
         self.SDE_Set.append([self.O_S[1]])
 
         #Generate States
-        self.Node_Set = []
         self.Node_Set.append(sPOMDPNode(Observation = "goal", Action_Dictionary = {"east": 1, "west": 3})) #state goal
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 2, "west": 0})) #state left
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 3, "west": 1})) #state middle
@@ -181,6 +196,7 @@ class Example4(sPOMDPModelExample):
 #but only with 5 known starting SDEs (nothing, LRVForward, MRVForward, LRVDocked, MRVDocked)
 class Example5(sPOMDPModelExample):
     def __init__(self):
+        sPOMDPModelExample.__init__(self)
         #Set Environment Details
         self.O_S = ["nothing","LRVForward", "MRVForward", "LRVDocked", "MRVDocked"] #Observation Set
         self.A_S = ["b", "f", "t"] #Action Set
@@ -194,7 +210,6 @@ class Example5(sPOMDPModelExample):
         sPOMDPNode.Epsilon = self.Epsilon
 
         #Use Already Known SDE
-        self.SDE_Set = []
         self.SDE_Set.append([self.O_S[0]])
         self.SDE_Set.append([self.O_S[1]])
         self.SDE_Set.append([self.O_S[2]])
@@ -202,7 +217,6 @@ class Example5(sPOMDPModelExample):
         self.SDE_Set.append([self.O_S[4]])
 
         #Generate States
-        self.Node_Set = []
         self.Node_Set.append(sPOMDPNode(Observation = "LRVDocked", Action_Dictionary = {"b": 7, "f": 4, "t": 1})) #state 0
         self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 1, "f": 1, "t": 4})) #state 1
         self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 3, "f": 1, "t": 5})) #state 2
@@ -215,22 +229,23 @@ class Example5(sPOMDPModelExample):
 #Used in Algorithm 3 code as a generic model.
 class genericModel(sPOMDPModelExample):
     def __init__(self, observationSet,actionSet, stateSize, SDE_Set, alpha, epsilon, environmentNodes):
-            #Set Environment Details
-            self.O_S = observationSet
-            self.A_S = actionSet
-            self.State_Size = stateSize
-            self.Alpha = alpha
-            self.Epsilon = epsilon
-            sPOMDPNode.O_S = self.O_S
-            sPOMDPNode.A_S = self.A_S
-            sPOMDPNode.State_Size = self.State_Size
-            sPOMDPNode.Alpha = self.Alpha
-            sPOMDPNode.Epsilon = self.Epsilon
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = observationSet
+        self.A_S = actionSet
+        self.State_Size = stateSize
+        self.Alpha = alpha
+        self.Epsilon = epsilon
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
 
-            self.SDE_Set = SDE_Set
+        self.SDE_Set = SDE_Set
 
-            #Generate States
-            self.Node_Set = environmentNodes
+        #Generate States
+        self.Node_Set = environmentNodes
 
 
 #Writes a numpy matrix to an xls file. Returns the last row the matrix was written on. Currently supports only 3D numpy matrices.
@@ -310,7 +325,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
 
     OneStep_Gammas = np.ones((len(env.A_S),len(env.A_S),len(SDE_List),len(SDE_List),len(SDE_List))) #[gamma]aa'mm'm'' (formatted this way as we always know what action we took, but only have a belief over which model state we are in)
 
-    # # convert gammas to transition probabilities
+    # convert gammas to transition probabilities
     Action_Probs = np.zeros((len(env.A_S),len(SDE_List),len(SDE_List)))
     for action in range(len(env.A_S)):
         for state in range(len(SDE_List)):
@@ -499,7 +514,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
         # Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
 
-        #<<New Work: Only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
+        #<<New Work: For first half of trajectory, only update the trans, only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
         if Transition_Idx < len(Informed_Transition)//4 and budd == True:
         #if Transition_Idx < len(Informed_Transition):
             max_row = np.argmax(np.max(Belief_Count, axis=1))
@@ -597,13 +612,14 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
         #<<New Work: Implement a confidence factor that allows for early termination of the algorithm if each transition has been performed a reasonable # of times>>
         if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor) and earlyTermination:
             print("Finished early after " + str(Transition_Idx+1) + " actions")
-            colIndex = 4+len(SDE_List)
-            sh.write(0,colIndex, "Final Transition Probabilities")
-            sh.write(0,colIndex+1, "Number of Actions:")
-            sh.write(0,colIndex+2,Transition_Idx)
-            newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
-            workbook.save(filename)
-            print("Done writing to file")
+            if writeToFile:
+                colIndex = 4+len(SDE_List)
+                sh.write(0,colIndex, "Final Transition Probabilities")
+                sh.write(0,colIndex+1, "Number of Actions:")
+                sh.write(0,colIndex+2,Transition_Idx)
+                newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
+                workbook.save(filename)
+                print("Done writing to file")
             break
 
 
@@ -835,6 +851,120 @@ def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, su
 
     print(env.SDE_Set)
 
+###WORKINGFFF
+# Calculate the error of a model as defined in Equation 6.4 (pg 122) of Collins' Thesis
+# env holds the SDEs for the model
+def calculateError(env, modelTransitionProbs, T):
+    Current_Observation = env.reset()
+    SDE_List = env.get_SDE()
+    state_List = env.Node_Set
+
+    first_Observations_mod = [item[0] for item in SDE_List]
+    first_Observations_env = [item.Observation for item in state_List]
+
+    # Generate the transition probabilities for the environment
+    envTransitionProbs = env.get_true_transition_probs()
+
+    # Generate trajectory using environment
+    Full_Transition = [Current_Observation]
+    for num in range(0,T):
+        Current_Observation, random_action = env.random_step()
+        Full_Transition.append(random_action)
+        Full_Transition.append(Current_Observation)
+
+    # Generate a belief mask for each model state that indicates what the likelihood is of being in each model state given an observation
+    Obs_Belief_Mask_mod = np.zeros((len(env.O_S), len(SDE_List)))
+    for (o_idx, o) in enumerate(env.O_S):
+        SDE_Chance = np.zeros(len(SDE_List))
+        #Figure out how many SDEs correspond to the observation
+        num_Correspond = first_Observations_mod.count(o)
+        #Set the corresponding SDEs to 1 divided by that value
+        SDE_Chance[(np.array(first_Observations_mod) == o)] = 1/num_Correspond
+        Obs_Belief_Mask_mod[o_idx,:] = SDE_Chance
+
+    # Generate a belief mask for each env state that indicates what the likelihood is of being in each env state given an observation
+    Obs_Belief_Mask_env = np.zeros((len(env.O_S), len(state_List)))
+    for (o_idx, o) in enumerate(env.O_S):
+        Obs_Chance = np.zeros(len(state_List))
+        #Figure out how many states correspond to the observation
+        num_Correspond = first_Observations_env.count(o)
+        #Set the corresponding states to 1 divided by that value
+        Obs_Chance[(np.array(first_Observations_env) == o)] = 1/num_Correspond
+        Obs_Belief_Mask_env[o_idx,:] = Obs_Chance
+
+    # Generate P(o|m) matrix for model and environment
+    Obs_Probs_mod = np.ones((len(env.O_S), len(SDE_List))) * ((1 - env.Epsilon) / ((len(env.O_S)) - 1))
+    for (sde_idx, sde) in enumerate(SDE_List):
+        o_idx = env.O_S.index(sde[0])
+        Obs_Probs_mod[o_idx, sde_idx] = env.Epsilon
+    Obs_Probs_env = env.get_observation_probs()
+
+    # Generate starting belief states for environment and model using first observation
+    Observation = Full_Transition[0]
+    Observation_Idx = env.O_S.index(Observation)
+    Belief_State_mod = Obs_Belief_Mask_mod[Observation_Idx].copy()
+    Belief_State_env = Obs_Belief_Mask_env[Observation_Idx].copy()
+
+    error = 0
+    Transition_Idx = 0
+    prev_error = 0
+    while Transition_Idx < len(Full_Transition)//2:
+
+        # print("Observation: " + str(Observation))
+        # print("Belief_State_mod: " + str(Belief_State_mod))
+        # print("Belief_State_env: " + str(Belief_State_env))
+
+        # update the belief states with the new action, observation pair
+        Observation = Full_Transition[Transition_Idx*2+2]
+        Observation_Idx = env.O_S.index(Observation)
+        Action = Full_Transition[Transition_Idx*2+1]
+        Belief_Mask_mod = Obs_Belief_Mask_mod[Observation_Idx]
+        Belief_Mask_env = Obs_Belief_Mask_env[Observation_Idx]
+
+        Model_Action_Idx = env.A_S.index(Action)
+        Belief_State_mod = np.dot(Belief_State_mod, modelTransitionProbs[Model_Action_Idx,:,:])
+        Belief_State_env = np.dot(Belief_State_env, envTransitionProbs[Model_Action_Idx,:,:])
+
+        # Belief_State_mod = Belief_State_mod*Belief_Mask_mod
+        Belief_State_mod = Belief_State_mod/np.sum(Belief_State_mod)
+        # Belief_State_env = Belief_State_env*Belief_Mask_env
+        Belief_State_env = Belief_State_env/np.sum(Belief_State_env)
+
+        # Compute error for the current belief states
+        error_vector = np.dot(Obs_Probs_mod, Belief_State_mod) - np.dot(Obs_Probs_env, Belief_State_env)
+        error = error + np.sqrt(error_vector.dot(error_vector))
+
+        # if np.sqrt(error_vector.dot(error_vector)) >= prev_error:
+            # print("Obs_Belief_Mask_mod")
+            # print(Obs_Belief_Mask_mod)
+            # print("Obs_Belief_Mask_env")
+            # print(Obs_Belief_Mask_env)
+            # print("Belief_State_mod")
+            # print(Belief_State_mod)
+            # print("Obs_Probs_mod")
+            # print(Obs_Probs_mod)
+            # print("Belief_State_env")
+            # print(Belief_State_env)
+            # print("Obs_Probs_env")
+            # print(Obs_Probs_env)
+            # print("np.dot(Obs_Probs_mod, Belief_State_mod)")
+            # print(np.dot(Obs_Probs_mod, Belief_State_mod))
+            # print("np.dot(Obs_Probs_env, Belief_State_env)")
+            # print(np.dot(Obs_Probs_env, Belief_State_env))
+            # print("error_vector")
+            # print(error_vector)
+            # print("np.sqrt(error_vector.dot(error_vector))")
+            # print(np.sqrt(error_vector.dot(error_vector)))
+            # print("---------------------")
+
+        prev_error = np.sqrt(error_vector.dot(error_vector))
+
+        Transition_Idx = Transition_Idx + 1
+
+    return error / T
+
+
+
 
 def getGraph(env, transitionProbs):
     SDE_List = env.get_SDE()
@@ -887,11 +1017,21 @@ def test2_v2():
 
 if __name__ == "__main__":
     # env = Example1()
+
     # SDE_Num = 1
     # explore = 0.05
-    # # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore, have_control=True)
-    # (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
-    # print(probsTrans)
+    # (beliefState, probTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore, writeToFile=False, workbook=None, earlyTermination=True,budd=True,conservativeness_factor=0, confidence_factor=10, have_control=True, filename=None)
+    
+    # (beliefState, probTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
+    # print(probTrans)
+    
+    # print("probTrans")
+    # print(probTrans)
+    # print("Actual transitions:")
+    # print(env.get_true_transition_probs())
+    # error = calculateError(env, probTrans, T=1000)
+    # error = calculateError(env, env.get_true_transition_probs(), T=1000)
+    # print(error)
 
     # env = Example2()
 
