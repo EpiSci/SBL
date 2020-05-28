@@ -268,6 +268,7 @@ def writeNumpyMatrixToFile(sheet, matrix, row=0,col=0):
 #budd: True - transition updates will not perform "column updates" and only update the transition associated with the most likely belief state
 #conservativeness_factor: How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
 #confidence_factor: The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
+# Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
 def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earlyTermination, budd, conservativeness_factor, confidence_factor, workbook, filename):
     Current_Observation = env.reset()
 
@@ -275,9 +276,10 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
 
     #Generate Full Transitions
     Full_Transition = [Current_Observation]
-    
-    
-    # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
+
+    # make SDE_Num equal to one if we have control that way we don't generate a large trajectory unnecessarily
+    if have_control is True:
+        SDE_Num = 1
 
     #Execute SDE_Num amount of SDE.
     for num in range(0,SDE_Num):
