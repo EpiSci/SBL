@@ -278,28 +278,40 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
     Full_Transition = [Current_Observation]
 
     # make SDE_Num equal to one if we have control that way we don't generate a large trajectory unnecessarily
-    if have_control is True:
-        SDE_Num = 1
-
-    #Execute SDE_Num amount of SDE.
-    for num in range(0,SDE_Num):
-        Matching_SDE = env.get_SDE(Current_Observation)
-        Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
-        Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
-        for action in Chosen_SDE_Actions:
-            if np.random.random() < explore:
+    if have_control is False:
+        #Execute SDE_Num amount of SDE.
+        for num in range(0,SDE_Num):
+            Matching_SDE = env.get_SDE(Current_Observation)
+            Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+            Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
+            for action in Chosen_SDE_Actions:
+                if np.random.random() < explore:
+                    Current_Observation, random_action = env.random_step()
+                    Full_Transition.append(random_action)
+                    Full_Transition.append(Current_Observation)
+                    break
+                else:
+                    Current_Observation = env.step(action)
+                    Full_Transition.append(action)
+                    Full_Transition.append(Current_Observation)
+            if num+1 < SDE_Num:
                 Current_Observation, random_action = env.random_step()
                 Full_Transition.append(random_action)
                 Full_Transition.append(Current_Observation)
-                break
-            else:
-                Current_Observation = env.step(action)
-                Full_Transition.append(action)
-                Full_Transition.append(Current_Observation)
-        if num+1 < SDE_Num:
+    else:  # since we have control, just start off with an SDE to localize
+        Matching_SDE = env.get_SDE(Current_Observation)
+        Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+        Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
+        # if SDE is just an observation (and hence has no actions), just perform a random action
+        if not Chosen_SDE_Actions:
             Current_Observation, random_action = env.random_step()
             Full_Transition.append(random_action)
             Full_Transition.append(Current_Observation)
+        else:  # finish the SDE
+            for action in Chosen_SDE_Actions:
+                Current_Observation = env.step(action)
+                Full_Transition.append(action)
+                Full_Transition.append(Current_Observation)
 
     #Get SDE Transitions
     SDE_List = env.get_SDE()
@@ -383,8 +395,8 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
     Transition_Idx = 0
     # print(Informed_Transition)
     # print(Belief_State)
+    print(len(Informed_Transition))
     while Transition_Idx < len(Informed_Transition)//2:
-
         #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
 
         #Create more trajectory if we have control and we're running out
@@ -588,10 +600,14 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
         if writeToFile:
             if Transition_Idx == 0:
                 rowIndex = 2
+                errorRowIndex = 1
+                errorColIndex = (len(SDE_List) * 2) + 7
                 modelNum = len(SDE_List) - len(env.O_S)
                 sh = workbook.add_sheet("Model " + str(modelNum))
                 print("Adding workbook sheet " + "Model " + str(modelNum))
                 sh.write(0,0, "Model States: ")
+                sh.write(0,errorColIndex, "Action #:")
+                sh.write(0,errorColIndex+1, "Error:")
                 for SDE_id, SDE in enumerate(SDE_List):
                     sh.write(0,SDE_id+1, SDE)
             
@@ -599,13 +615,18 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
                 sh.write(rowIndex, 0, "Transition Probabilities at Iteration: " +str(Transition_Idx))
                 rowIndex = rowIndex + 1
                 newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=rowIndex,col=0)
-                rowIndex = newRow + 2 
+                rowIndex = newRow + 2
+                sh.write(errorRowIndex,errorColIndex, str(Transition_Idx))
+                sh.write(errorRowIndex,errorColIndex+1, str(calculateError(env, Action_Probs, 10000)))
+                errorRowIndex = errorRowIndex + 1
 
             if Transition_Idx + 1 == len(Informed_Transition)//2: #The last action in the trajectory
                 colIndex = 4+len(SDE_List)
                 sh.write(0,colIndex, "Final Transition Probabilities")
                 sh.write(0,colIndex+1, "Number of Actions:")
                 sh.write(0,colIndex+2,Transition_Idx)
+                sh.write(errorRowIndex,errorColIndex, str(Transition_Idx))
+                sh.write(errorRowIndex,errorColIndex+1, str(calculateError(env, Action_Probs, 10000)))
                 newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
                 workbook.save(filename)
                 print("Done writing to file")
@@ -839,21 +860,16 @@ def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, su
         (gainMA, entropyMA) = calculateGain(env, probsTrans, OneStep_Gammas)
         #<<New Work: Use the maximum gain within the model to determine if the model should be split or not. This better generalizes to non alpha-epsilon environments>>
         if  np.max(gainMA) < gainThresh:#Done learning
-            # if writeToFile:
-            #     book.save(filename)
             break
 
         (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas, gainMA)
         if not splitResult:
             print("Stopped because not able to split")
-            # if writeToFile:
-            #     book.save(filename)
             break
         # input("Done with the current iteration. Press any key to begin the next iteration.")
 
     print(env.SDE_Set)
 
-###WORKINGFFF
 # Calculate the error of a model as defined in Equation 6.4 (pg 122) of Collins' Thesis
 # env holds the SDEs for the model
 def calculateError(env, modelTransitionProbs, T):
@@ -1015,7 +1031,7 @@ def test2_v2():
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=True, budd=True, have_control = True, conservativeness_factor=0, confidence_factor=5, filename="Testing Data/Test2_v2May26.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=True, budd=True, have_control = True, conservativeness_factor=0, confidence_factor=50, filename="Testing Data/Test2_v2May28.xls")
 
 if __name__ == "__main__":
     # env = Example1()
