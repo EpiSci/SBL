@@ -616,8 +616,8 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
                 rowIndex = rowIndex + 1
                 newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=rowIndex,col=0)
                 rowIndex = newRow + 2
-                sh.write(errorRowIndex,errorColIndex, str(Transition_Idx))
-                sh.write(errorRowIndex,errorColIndex+1, str(calculateError(env, Action_Probs, 10000)))
+                sh.write(errorRowIndex,errorColIndex, Transition_Idx)
+                sh.write(errorRowIndex,errorColIndex+1, calculateError(env, Action_Probs, 10000))
                 errorRowIndex = errorRowIndex + 1
 
             if Transition_Idx + 1 == len(Informed_Transition)//2: #The last action in the trajectory
@@ -625,8 +625,8 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
                 sh.write(0,colIndex, "Final Transition Probabilities")
                 sh.write(0,colIndex+1, "Number of Actions:")
                 sh.write(0,colIndex+2,Transition_Idx)
-                sh.write(errorRowIndex,errorColIndex, str(Transition_Idx))
-                sh.write(errorRowIndex,errorColIndex+1, str(calculateError(env, Action_Probs, 10000)))
+                sh.write(errorRowIndex,errorColIndex, Transition_Idx)
+                sh.write(errorRowIndex,errorColIndex+1, calculateError(env, Action_Probs, 10000))
                 newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
                 workbook.save(filename)
                 print("Done writing to file")
@@ -1013,7 +1013,7 @@ def test1_v2():
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2May26.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2May28.xls")
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1():
@@ -1059,4 +1059,4 @@ if __name__ == "__main__":
     # numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     # explore = 0.05
     # approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True)
-    test2_v2()
+    test1_v2()
