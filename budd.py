@@ -1042,7 +1042,7 @@ def getGraph(env, transitionProbs):
 def test1_v1(filename,env):
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
-    entropyThresh = 0.55
+    entropyThresh = 0.65
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename=filename)
