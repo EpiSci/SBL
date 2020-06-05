@@ -771,7 +771,7 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
                 transitionSetProbs = Action_Probs[a_idx,m_idx,:]
                 transitionSetEntropy = entropy(transitionSetProbs, base=len(env.SDE_Set))
                 #TODO: change this ratio to be the correct ratio from equation 4
-                if transitionSetEntropy > maxEntropy:
+                if transitionSetEntropy > maxEntropy and transitionSetEntropy > surpriseThresh:
                     maxEntropy = transitionSetEntropy
                     transitionSetProbs = Action_Probs[a_idx,m_idx,:]
                     orderedVals = transitionSetProbs.copy()
@@ -784,6 +784,8 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
                     m2_prime = env.get_SDE()[sde2_idx]
                     a_optimal = a
                     m_optimal = m
+        print("Max Entropy: ")
+        print(maxEntropy)
 
     else:
         (gainMA, entropyMA) = calculateGain(env, Action_Probs, OneStep_Gammas)
@@ -862,6 +864,7 @@ def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, su
         print(env.SDE_Set)
         if writeToFile and book == None:
             book = xlwt.Workbook()
+
         (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore, writeToFile=writeToFile, workbook=book, earlyTermination=earlyTermination,budd=budd,conservativeness_factor=conservativeness_factor, confidence_factor=confidence_factor, have_control=have_control, filename=filename)
         print("||||||||||||||||||||")
         # print(OneStep_Gammas)
@@ -1017,19 +1020,19 @@ def test1_v1():
     #env = Example2()
     env = Example2()
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
-    surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
+    surpriseThresh = 0.55 #0.4 for entropy splitting; 0 for one-step extension gain splitting
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=False, filename="Testing Data/Test1_v1_env2June3.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, writeToFile=True, earlyTermination=False, budd=False, filename="Testing Data/Test1_v1_env2June3.xls")
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2():
     env = Example2()
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
-    surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    numSDEsPerExperiment = 65000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    surpriseThresh = 0.55 #0.4 for entropy splitting; 0 for one-step extension gain splitting
+    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2_env2June3.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2_env2June3.xls")
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1():
