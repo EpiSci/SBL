@@ -3,6 +3,7 @@ from scipy.stats import dirichlet, entropy
 import networkx as nx
 import xlwt
 import git
+import datetime
 
 
 #This class represents a node and each node is a state in the model.
@@ -1038,7 +1039,7 @@ def getGraph(env, transitionProbs):
     return G
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
-def test1_v1():
+def test1_v1(filename):
     #env = Example2()
     env = Example2()
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
@@ -1046,10 +1047,10 @@ def test1_v1():
     entropyThresh = 0.55
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename="Testing Data/Test1_v1_env2June3.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename=filename)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
-def test1_v2():
+def test1_v2(filename):
     env = Example2()
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
@@ -1057,10 +1058,10 @@ def test1_v2():
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     percentTimeofBudd = 0.9
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename="Testing Data/Test1_v2_env2June3.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
-def test2_v1():
+def test2_v1(filename):
     env = Example2()
     gainThresh = 0.01 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
@@ -1068,10 +1069,10 @@ def test2_v1():
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     percentTimeofBudd = 0.9
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = False, conservativeness_factor=0, confidence_factor=5, filename="Testing Data/Test2_v1May26.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = False, conservativeness_factor=0, confidence_factor=5, filename=filename)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
-def test2_v2():
+def test2_v2(filename):
     env = Example2()
     gainThresh = 0.01 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
@@ -1079,32 +1080,15 @@ def test2_v2():
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     percentTimeofBudd = 0.9
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = True, conservativeness_factor=0, confidence_factor=50, filename="Testing Data/Test2_v2May28.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = True, conservativeness_factor=0, confidence_factor=50, filename=filename)
 
 if __name__ == "__main__":
-    # env = Example1()
-
-    # SDE_Num = 1
-    # explore = 0.05
-    # (beliefState, probTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, SDE_Num, explore, writeToFile=False, workbook=None, earlyTermination=True,budd=True,conservativeness_factor=0, confidence_factor=10, have_control=True, filename=None)
-    
-    # (beliefState, probTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, 10000, explore, have_control=False)
-    # print(probTrans)
-    
-    # print("probTrans")
-    # print(probTrans)
-    # print("Actual transitions:")
-    # print(env.get_true_transition_probs())
-    # error = calculateError(env, probTrans, T=1000)
-    # error = calculateError(env, env.get_true_transition_probs(), T=1000)
-    # print(error)
-
-    # env = Example2()
-
-    # # entropyThresh = 0.35 #0.2 Better to keep smaller as this is a weighted average that can be reduced by transitions that are learned very well.
-    # gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
-    # surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    # numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
-    # explore = 0.05
-    # approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True)
-    test1_v2()
+    testNum = 1
+    versionNum = 1
+    envNum = 2
+    numSubTests = 5
+    date = datetime.datetime.today()
+    for subTest in range(5):
+        filename = "Testing Data/Test" + str(testNum) + "_v" + str(versionNum) + "_env" + str(envNum) + "_" + str(date.month) + "_" + str(date.day) +  "_" + str(date.hour)  + "_" + str(date.minute) + "_" + str(subTest) + ".xls"
+        print(filename)
+        test1_v2(filename)
