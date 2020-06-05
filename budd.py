@@ -1039,9 +1039,7 @@ def getGraph(env, transitionProbs):
     return G
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
-def test1_v1(filename):
-    #env = Example2()
-    env = Example2()
+def test1_v1(filename,env):
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
     entropyThresh = 0.55
@@ -1050,8 +1048,7 @@ def test1_v1(filename):
     approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename=filename)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
-def test1_v2(filename):
-    env = Example2()
+def test1_v2(filename,env):
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
     entropyThresh = 0.55
@@ -1061,8 +1058,7 @@ def test1_v2(filename):
     approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
-def test2_v1(filename):
-    env = Example2()
+def test2_v1(filename,env):
     gainThresh = 0.01 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
     entropyThresh = 0.4
@@ -1072,8 +1068,7 @@ def test2_v1(filename):
     approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = False, conservativeness_factor=0, confidence_factor=5, filename=filename)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
-def test2_v2(filename):
-    env = Example2()
+def test2_v2(filename,env):
     gainThresh = 0.01 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
     entropyThresh = 0.4
@@ -1087,8 +1082,14 @@ if __name__ == "__main__":
     versionNum = 1
     envNum = 2
     numSubTests = 5
+    testString = "test"+str(testNum)+"_v"+str(versionNum)
+    envString = "Example"+str(envNum)
+
     date = datetime.datetime.today()
+
     for subTest in range(5):
         filename = "Testing Data/Test" + str(testNum) + "_v" + str(versionNum) + "_env" + str(envNum) + "_" + str(date.month) + "_" + str(date.day) +  "_" + str(date.hour)  + "_" + str(date.minute) + "_" + str(subTest) + ".xls"
         print(filename)
-        test1_v2(filename)
+        env = locals()[envString]()
+        locals()[testString](filename,env)
+        #test1_v2(filename)
