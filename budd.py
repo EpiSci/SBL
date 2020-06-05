@@ -269,8 +269,9 @@ def writeNumpyMatrixToFile(sheet, matrix, row=0,col=0):
 #budd: True - transition updates will not perform "column updates" and only update the transition associated with the most likely belief state
 #conservativeness_factor: How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
 #confidence_factor: The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
+#percentTimeofBudd: A number between 0 and 1. e.g. 0.9 means budd will work on the first 90% of the trajectory
 # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
-def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earlyTermination, budd, conservativeness_factor, confidence_factor, workbook, filename):
+def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earlyTermination, budd, conservativeness_factor, confidence_factor, percentTimeofBudd, workbook, filename):
     Current_Observation = env.reset()
 
     SDE_List = env.get_SDE()
@@ -530,7 +531,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
 
         #<<New Work: For first half of trajectory, only update the trans, only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
-        if Transition_Idx < len(Informed_Transition)//4 and budd == True:
+        if Transition_Idx < (len(Informed_Transition)//2)*percentTimeofBudd and budd == True:
         #if Transition_Idx < len(Informed_Transition):
             max_row = np.argmax(np.max(Belief_Count, axis=1))
             Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
@@ -858,7 +859,7 @@ def getModelEntropy(env, transitionProbs):
 
 
 #Algorithm 3: Approximate sPOMPDP Learning.
-def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh = 0.55, writeToFile=False,budd=True, earlyTermination=False,conservativeness_factor=0, confidence_factor=100,have_control=False, filename=None):
+def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh = 0.55, writeToFile=False,budd=True, earlyTermination=False,conservativeness_factor=0, confidence_factor=100,have_control=False, filename=None, percentTimeofBudd=0.9):
     book = None
     #Initialize model
     while True:
@@ -883,7 +884,7 @@ def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, su
                 rowIndex=rowIndex+1
             book.save(filename)
 
-        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore, writeToFile=writeToFile, workbook=book, earlyTermination=earlyTermination,budd=budd,conservativeness_factor=conservativeness_factor, confidence_factor=confidence_factor, have_control=have_control, filename=filename)
+        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore, writeToFile=writeToFile, workbook=book, earlyTermination=earlyTermination,budd=budd,percentTimeofBudd=percentTimeofBudd,conservativeness_factor=conservativeness_factor, confidence_factor=confidence_factor, have_control=have_control, filename=filename)
         print("||||||||||||||||||||")
         # print(OneStep_Gammas)
         print("||||||||||||||||||||")
@@ -1055,7 +1056,8 @@ def test1_v2():
     entropyThresh = 0.55
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2_env2June3.xls")
+    percentTimeofBudd = 0.9
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename="Testing Data/Test1_v2_env2June3.xls")
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1():
@@ -1065,7 +1067,8 @@ def test2_v1():
     entropyThresh = 0.4
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, have_control = False, conservativeness_factor=0, confidence_factor=5, filename="Testing Data/Test2_v1May26.xls")
+    percentTimeofBudd = 0.9
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = False, conservativeness_factor=0, confidence_factor=5, filename="Testing Data/Test2_v1May26.xls")
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v2():
@@ -1075,7 +1078,8 @@ def test2_v2():
     entropyThresh = 0.4
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, have_control = True, conservativeness_factor=0, confidence_factor=50, filename="Testing Data/Test2_v2May28.xls")
+    percentTimeofBudd = 0.9
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = True, conservativeness_factor=0, confidence_factor=50, filename="Testing Data/Test2_v2May28.xls")
 
 if __name__ == "__main__":
     # env = Example1()
