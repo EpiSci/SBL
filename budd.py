@@ -750,7 +750,7 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
 
 
 #Lines 6-19 of Algorithm 1. If splitting is successful, returns True and the new environment. Otherwise returns False and the previous environment.
-def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep_Gammas, gainMA):
+def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep_Gammas, useEntropy):
     didSplit = False
     newEnv = env
     
@@ -758,39 +758,50 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
     print(OneStep_Gammas)
     print("----------------------")
 
-    (gainMA, entropyMA) = calculateGain(env, Action_Probs, OneStep_Gammas)
-
 
     m1_prime = []
     m2_prime = []
     a_optimal = ""
     m_optimal = ""
-    maxEntropy = 0
+    
+    if useEntropy:
+        maxEntropy = 0
+        for m_idx, m in enumerate(env.SDE_Set):
+            for a_idx, a in enumerate(env.A_S):
+                transitionSetProbs = Action_Probs[a_idx,m_idx,:]
+                transitionSetEntropy = entropy(transitionSetProbs, base=len(env.SDE_Set))
+                #TODO: change this ratio to be the correct ratio from equation 4
+                if transitionSetEntropy > maxEntropy:
+                    maxEntropy = transitionSetEntropy
+                    transitionSetProbs = Action_Probs[a_idx,m_idx,:]
+                    orderedVals = transitionSetProbs.copy()
+                    orderedVals.sort()
+                    prob1 = orderedVals[-1] #largest probability
+                    prob2 = orderedVals[-2] #second largest probability
+                    sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
+                    sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
+                    m1_prime = env.get_SDE()[sde1_idx]
+                    m2_prime = env.get_SDE()[sde2_idx]
+                    a_optimal = a
+                    m_optimal = m
 
-    maxGainIndex = np.unravel_index(np.argmax(gainMA),gainMA.shape)
-    if gainMA[maxGainIndex] > surpriseThresh:  #Check to see if gain is high enough
-        transitionSetProbs = Action_Probs[maxGainIndex[0],maxGainIndex[1],:]
-        orderedVals = transitionSetProbs.copy()
-        orderedVals.sort()
-        prob1 = orderedVals[-1] #largest probability
-        prob2 = orderedVals[-2] #second largest probability
-        sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
-        sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
-        m1_prime = env.get_SDE()[sde1_idx]
-        m2_prime = env.get_SDE()[sde2_idx]
-        m_optimal = env.get_SDE()[maxGainIndex[1]]
-        a_optimal = env.A_S[maxGainIndex[0]]
     else:
-        return (False,env) #did not find an SDE to split that had high enough entropy
-
-    print("==============")
-    print(m_optimal)
-    print(a_optimal)
-    print(maxGainIndex)
-    print(m1_prime)
-    print(m2_prime)
-    print(transitionSetProbs)
-    print("==============")
+        (gainMA, entropyMA) = calculateGain(env, Action_Probs, OneStep_Gammas)
+        maxGainIndex = np.unravel_index(np.argmax(gainMA),gainMA.shape)
+        if gainMA[maxGainIndex] > surpriseThresh:  #Check to see if gain is high enough
+            transitionSetProbs = Action_Probs[maxGainIndex[0],maxGainIndex[1],:]
+            orderedVals = transitionSetProbs.copy()
+            orderedVals.sort()
+            prob1 = orderedVals[-1] #largest probability
+            prob2 = orderedVals[-2] #second largest probability
+            sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
+            sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
+            m1_prime = env.get_SDE()[sde1_idx]
+            m2_prime = env.get_SDE()[sde2_idx]
+            m_optimal = env.get_SDE()[maxGainIndex[1]]
+            a_optimal = env.A_S[maxGainIndex[0]]
+        else:
+            return (False,env) #did not find an SDE to split that had high enough entropy
 
     if not m1_prime or not m2_prime:
         return (False,env) #did not find an SDE to split that had high enough entropy
@@ -844,7 +855,7 @@ def getModelEntropy(env, transitionProbs):
 
 
 #Algorithm 3: Approximate sPOMPDP Learning.
-def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=False,budd=True, earlyTermination=False,conservativeness_factor=0, confidence_factor=100,have_control=False, filename=None):
+def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh = 0.4, writeToFile=False,budd=True, earlyTermination=False,conservativeness_factor=0, confidence_factor=100,have_control=False, filename=None):
     #Initialize model
     book = None
     while True:
@@ -856,13 +867,17 @@ def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, su
         # print(OneStep_Gammas)
         print("||||||||||||||||||||")
 
-        # if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
-        (gainMA, entropyMA) = calculateGain(env, probsTrans, OneStep_Gammas)
-        #<<New Work: Use the maximum gain within the model to determine if the model should be split or not. This better generalizes to non alpha-epsilon environments>>
-        if  np.max(gainMA) < gainThresh:#Done learning
-            break
+        gainMA = []
+        if splitWithEntropy:
+            if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
+                break
+        else:
+            (gainMA, entropyMA) = calculateGain(env, probsTrans, OneStep_Gammas)
+            #<<New Work: Use the maximum gain within the model to determine if the model should be split or not. This better generalizes to non alpha-epsilon environments>>
+            if  np.max(gainMA) < gainThresh:#Done learning
+                break
 
-        (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas, gainMA)
+        (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas, splitWithEntropy)
         if not splitResult:
             print("Stopped because not able to split")
             break
@@ -999,21 +1014,22 @@ def getGraph(env, transitionProbs):
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
 def test1_v1():
+    #env = Example2()
     env = Example2()
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=False, filename="Testing Data/Test1_v1May26.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=False, filename="Testing Data/Test1_v1_env2June3.xls")
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2():
     env = Example2()
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0.4 for entropy splitting; 0 for one-step extension gain splitting
-    numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    numSDEsPerExperiment = 65000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2May28.xls")
+    approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, writeToFile=True, earlyTermination=False, budd=True, filename="Testing Data/Test1_v2_env2June3.xls")
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1():
