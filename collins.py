@@ -41,19 +41,42 @@ def psblLearning(env, numActions, explore, patience):
             action = policy.pop()
             nextOb = env.step(action)
             # Algorithm 13:
-            updateModelParameters(env, action, prevOb, nextOb)
+            updateModelParameters(model, action, prevOb, nextOb)
             prevOb = nextOb
 
         newSurprise = computeSurprise(env)
         if newSuprise < minSurprise:
             minSurprise = newSurprise
-            minSurpriseModel = copy.deepcopy(env)
+            minSurpriseModel = copy.deepcopy(model)
             splitsSinceMin = 0
         else:
             splitsSinceMin = 1
         if splitsSinceMin > patience:
             break
-        foundSplit = trySplit(env)
+        foundSplit = trySplit(model)
     return minSurpriseModel
 
 
+#Algorithm 13: Update sPOMDP Model Parameters
+def updateModelParameters(model, action, prevOb, nextOb):
+    model.actionHistory.append(a)
+    model.observationHistory.append(nextOb)
+    history = [val for pair in zip(model.actionHistory,model.observationHistory) for val in pair]
+    #Note: the previous line will only work for lists of the same length. Since the observation history has one more element, we need to append the nextOb to the end of the history
+    history.append(nextOb)
+    maxOutcomeLength = max([len(sde) for sde in model.env.SDE_Set])
+    if len(history) > maxOutcomeLength + 6:
+        # Algorithm 15
+        model.beliefHistory = smoothBeliefHistory(history, model.beliefHistory)
+        # Algorithm 16
+        updateTransitionFunctionPosteriors(a, nextOb, model.beliefHistory)
+        # Algorithm 17
+        updateOneStepFunctionPosteriors(history, model.beliefHistory)
+        model.actionHistory.pop(0)
+        model.observationHistory.pop(0)
+
+    # Algorithm 14
+    model.beliefState = updateBeliefState(model.beliefState, a, nextOb)
+    model.beliefHistory.append(copy.deepcopy(model.beliefState))
+    if len(model.beliefHistory) > len(model.actionHistory):
+        model.beliefHistory.pop(0)
