@@ -1,7 +1,5 @@
 import budd 
 from pomdp import *
-import xlwt
-import git
 import datetime
 
 #Writes a numpy matrix to an xls file. Returns the last row the matrix was written on. Currently supports only 3D numpy matrices.
