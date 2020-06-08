@@ -76,7 +76,34 @@ def updateModelParameters(model, action, prevOb, nextOb):
         model.observationHistory.pop(0)
 
     # Algorithm 14
-    model.beliefState = updateBeliefState(model.beliefState, a, nextOb)
+    model.beliefState = updateBeliefState(model, model.beliefState, a, nextOb)
     model.beliefHistory.append(copy.deepcopy(model.beliefState))
     if len(model.beliefHistory) > len(model.actionHistory):
         model.beliefHistory.pop(0)
+
+# Algorithm 14: sPOMDP Belief Update
+def updateBeliefState(model, b, a, o):
+    a_index = index(model.env.A_S)
+    joint = np.zeros([len(b),len(b)])
+    for m in range(len(b)):
+        for m_prime in range(len(b)):
+            joint[m][m_prime] = model.T[m][a_index][m_prime]*b[m]
+
+    b_prime = [0 for val in range(m)]
+    for m_prime in range(len(b)):
+        for m in range(len(b)):
+            b_prime[m_prime] = b_prime[m_prime] + joint[m][m_prime]
+
+    for (m_idx, m) in enumerate(model.env.SDE_List):
+        multFactor = int(m[0] == o)
+        b_prime[m_idx] = b_prime[m_idx]*multFactor
+
+    total = 0
+    for m in range(len(b)):
+        total = total + b_prime[m]
+    for m in rnage(len(b)):
+        b_prime[m] = b_prime[m] / total
+    return b_prime
+
+
+            
