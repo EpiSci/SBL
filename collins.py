@@ -19,6 +19,18 @@ def largestConsistentSequence(head,sequence):
     #If it gets to this point, either head has no leaves or the sequence doesn't match
     #Either way, return an empty list
     return []
+
+def insertSequence(head,sequence):
+    if not not sequence:
+        for leaf in head.leaves:
+            if leaf.val == sequence[0]:
+                insertSequence(leaf,sequence[1:])
+                return None
+        #If it gets here, then need to insert a new node
+        newNode = TrieNode(sequence[0])
+        head.leaves.append(newNode)
+        insertSequence(newNode,sequence[1:])
+    return None
         
 
 class CollinsModel():
@@ -188,3 +200,4 @@ def updateOneStepFunctionPosteriors(model, history):
                 totalCounts = totalCounts + counts[m_idx][mp_idx][mdp_idx]
 
     #Note: Not necessary to do updateOneStepProbabilities (analagous to Algorithm 12) since this is handled by the dirichlet distributions
+
