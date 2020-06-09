@@ -96,7 +96,7 @@ def updateModelParameters(model, action, prevOb, nextOb):
         # Algorithm 16
         updateTransitionFunctionPosteriors(model, a, nextOb)
         # Algorithm 17
-        updateOneStepFunctionPosteriors(model, history, model.beliefHistory)
+        updateOneStepFunctionPosteriors(model, history)
         model.actionHistory.pop(0)
         model.observationHistory.pop(0)
 
@@ -108,7 +108,7 @@ def updateModelParameters(model, action, prevOb, nextOb):
 
 # Algorithm 14: sPOMDP Belief Update
 def updateBeliefState(model, b, a, o):
-    a_index = index(model.env.A_S)
+    a_index = model.env.A_S.index(a)
     joint = np.zeros([len(b),len(b)])
     for m in range(len(b)):
         for m_prime in range(len(b)):
@@ -153,7 +153,7 @@ def smoothBeliefHistory(model, history, beliefHistory):
 
 #Algorithm 16: Transition Function Posteriors Update
 def updateTransitionFunctionPosteriors(model, a, o):
-    a_index = index(model.env.A_S)
+    a_index = model.env.A_S.index(a)
     counts = np.zeros([len(model.beliefState),len(model.beliefState)])
     totalCounts = 0
     for (m_idx, m) in enumerate(model.env.SDE_Set):
@@ -168,3 +168,23 @@ def updateTransitionFunctionPosteriors(model, a, o):
             model.TCounts[a_index][m_idx][mp_idx] = model.TCounts[a_index][m_idx][mp_idx] + counts[m_idx][mp_idx]
 
     #Note: Not necessary to do updateTransitionProbabilities (Algorithm 12) since this is handled by the dirichlet distributions
+
+# Algorithm 17: One Step Transition Function Posteriors Update
+def updateOneStepFunctionPosteriors(model, history):
+    o = history[0]
+    a = history[1]
+    o_prime = history[2]
+    a_prime = history[3]
+    a_index = model.env.A_S.index(a)
+    ap_index = model.env.A_S.index(a_prime)
+    counts = np.zeros([len(model.beliefState),len(model.beliefState),len(model.beliefState)])
+    totalCounts = 0
+    for (m_idx,m) in enumerate(model.env.SDE_Set):
+        for (mp_idx,mp) in enumerate(model.env.SDE_Set):
+            for (mdp_idx,mdp) in enumerate(model.env.SDE_Set):
+                multFactor1 = int(mp[0] == o)
+                multFactor2 = int(mdp[0] == o_prime)
+                counts[m_idx][mp_idx][mdp_idx] = multFactor1 * multFactor2 * (dirichlet.mean(model.TCounts[ap_index, mp_idx, :])[mdp_idx]) * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
+                totalCounts = totalCounts + counts[m_idx][mp_idx][mdp_idx]
+
+    #Note: Not necessary to do updateOneStepProbabilities (analagous to Algorithm 12) since this is handled by the dirichlet distributions
