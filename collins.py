@@ -94,9 +94,9 @@ def updateModelParameters(model, action, prevOb, nextOb):
         # Algorithm 15
         model.beliefHistory = smoothBeliefHistory(model,history, model.beliefHistory)
         # Algorithm 16
-        updateTransitionFunctionPosteriors(a, nextOb, model.beliefHistory)
+        updateTransitionFunctionPosteriors(model, a, nextOb)
         # Algorithm 17
-        updateOneStepFunctionPosteriors(history, model.beliefHistory)
+        updateOneStepFunctionPosteriors(model, history, model.beliefHistory)
         model.actionHistory.pop(0)
         model.observationHistory.pop(0)
 
@@ -112,7 +112,7 @@ def updateBeliefState(model, b, a, o):
     joint = np.zeros([len(b),len(b)])
     for m in range(len(b)):
         for m_prime in range(len(b)):
-            joint[m][m_prime] = model.T[m][a_index][m_prime]*b[m] #This line will throw an error. We need to use the Dirichlet distributions since we don't formally have a T matrix
+            joint[m][m_prime] = (dirichlet.mean(model.TCounts[a_index, m, :])[m_prime])*b[m]#model.T[m][a_index][m_prime]*b[m]
 
     b_prime = [0 for val in range(m)]
     for m_prime in range(len(b)):
@@ -150,18 +150,21 @@ def smoothBeliefHistory(model, history, beliefHistory):
             beliefHistory[i][m] = beliefHistory[i][m] / total
 
     return beliefHistory
-            
-        
 
+#Algorithm 16: Transition Function Posteriors Update
+def updateTransitionFunctionPosteriors(model, a, o):
+    a_index = index(model.env.A_S)
+    counts = np.zeros([len(model.beliefState),len(model.beliefState)])
+    totalCounts = 0
+    for (m_idx, m) in enumerate(model.env.SDE_Set):
+        for (mp_idx, m_prime) in enumerate(model.env.SDE_Set):
+            multFactor = int(m_prime[0] == o)
+            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * beliefHistory[0][m_idx]
+            totalCounts = totalCounts + counts[m_idx][mp_idx]
 
-# print("hi")
-# n8 = TrieNode("diamond",[])
-# n7 = TrieNode("square",[])
-# n6 = TrieNode("diamond",[])
-# n5 = TrieNode("x",[n7,n8])
-# n4 = TrieNode("y",[n6])
-# n3 = TrieNode("diamond",[n5])
-# n2 = TrieNode("square",[n4])
-# n1 = TrieNode(None, [n2,n3])
-# print(largestConsistentSequence(n1,["square","y","diamond"]))
-# print(largestConsistentSequence(n1,["chartrues"]))
+    for m_idx in range(model.beliefStates):
+        for mp_idx in range(model.beliefStates):
+            counts[m_idx][mp_idx] = counts[m_idx][mp_idx] / totalCounts
+            model.TCounts[a_index][m_idx][mp_idx] = model.TCounts[a_index][m_idx][mp_idx] + counts[m_idx][mp_idx]
+
+    #Note: Not necessary to do updateTransitionProbabilities (Algorithm 12) since this is handled by the dirichlet distributions
