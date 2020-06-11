@@ -1,6 +1,7 @@
 import budd 
 from pomdp import *
 import datetime
+import collins
 
 #Writes a numpy matrix to an xls file. Returns the last row the matrix was written on. Currently supports only 3D numpy matrices.
 def writeNumpyMatrixToFile(sheet, matrix, row=0,col=0):
@@ -23,7 +24,8 @@ def test1_v1(filename,env):
     entropyThresh = 0.65
     numSDEsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
-    budd.approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename=filename)
+    # budd.approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename=filename)
+    collins.psblLearning(env, numSDEsPerExperiment, explore,0,gainThresh)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2(filename,env):
@@ -65,6 +67,8 @@ if __name__ == "__main__":
 
     date = datetime.datetime.today()
 
+    test1_v1("hi",Example2())
+    exit()
     for subTest in range(5):
         filename = "Testing Data/Test" + str(testNum) + "_v" + str(versionNum) + "_env" + str(envNum) + "_" + str(date.month) + "_" + str(date.day) +  "_" + str(date.hour)  + "_" + str(date.minute) + "_" + str(subTest) + ".xls"
         print(filename)

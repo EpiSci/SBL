@@ -48,7 +48,7 @@ class CollinsModel():
         
         #The instance variable self.env has a current model associated with it. Thus lines 5 through 14 are unnecessary (lines 12 and 13 will be addressed below).
         #Note: lines 12 and 13 set the belief state to be 1 at the current observation
-        self.beliefState = np.zeros([1,len(self.env.O_S)])
+        self.beliefState = np.zeros([len(self.env.O_S)])
         self.beliefState[self.env.O_S.index(firstObservation)] = 1
         
         # Note: self.TCounts is of shape (a,m,m') and not (m,a,m') for efficiency
@@ -61,6 +61,9 @@ class CollinsModel():
         self.observationHistory.append(firstObservation)
         self.beliefHistory = []
         self.beliefHistory.append(copy.deepcopy(self.beliefState))
+        print(self.beliefState)
+        print(self.beliefHistory)
+        print("YAY")
         self.minGain = minimumGain
 
     # Reinitialize a model (after the new SDEs have been inserted)
@@ -90,6 +93,8 @@ def psblLearning(env, numActions, explore, patience,minGain):
     foundSplit = True
     while foundSplit:
         for i in range(numActions):
+            # if i % 1000 == 0:
+                # print(i)
             if not policy:
                 # Add actions of an SDE to the policy or random actions
                 policy = updatePolicy(model, explore, prevOb)
@@ -97,6 +102,10 @@ def psblLearning(env, numActions, explore, patience,minGain):
             nextOb = model.env.step(action)
             # Algorithm 13:
             updateModelParameters(model, action, prevOb, nextOb)
+            print("model beliefHistory")
+            print(model.beliefHistory)
+            print("observation history")
+            print(model.observationHistory)
             prevOb = nextOb
 
         newSurprise = computeSurprise(model)
@@ -114,14 +123,14 @@ def psblLearning(env, numActions, explore, patience,minGain):
 
 # Helper Function for Algorithm 10
 def updatePolicy(model,explore,prevObservation):
-    random_sample = np.random.random
+    random_sample = np.random.random()
     matchingSDEs = model.env.get_SDE(prevObservation)
     randSDE = random.choice(matchingSDEs)
     policy = randSDE[1::2] # Need to pull every other value since both observations and actions are stored in the SDE, but only a policy should be returned
-    if random_sample < explore:
+    if random_sample < explore and not not policy:
         return policy
     else:
-        return random.choices(model.env.A_S, k=len(policy))
+        return random.choices(model.env.A_S, k=max(1,len(policy)))# Use max of 1 or the policy length to make sure at least one action is returned
 
 # Helper Function for Algorithm 10
 def computeSurprise(model):
@@ -138,12 +147,14 @@ def computeSurprise(model):
 def updateModelParameters(model, a, prevOb, nextOb):
     model.actionHistory.append(a)
     model.observationHistory.append(nextOb)
-    history = [val for pair in zip(model.actionHistory,model.observationHistory) for val in pair]
+    history = [val for pair in zip(model.observationHistory,model.actionHistory) for val in pair]
     #Note: the previous line will only work for lists of the same length. Since the observation history has one more element, we need to append the nextOb to the end of the history
     history.append(nextOb)
     maxOutcomeLength = max([len(sde) for sde in model.env.SDE_Set])
     if len(history) > maxOutcomeLength + 6:
         # Algorithm 15
+        print("beliefHistory")
+        print(model.beliefHistory)
         model.beliefHistory = smoothBeliefHistory(model,history, model.beliefHistory)
         # Algorithm 16
         updateTransitionFunctionPosteriors(model, a, nextOb)
@@ -155,7 +166,13 @@ def updateModelParameters(model, a, prevOb, nextOb):
     # Algorithm 14
     model.beliefState = updateBeliefState(model, model.beliefState, a, nextOb)
     model.beliefHistory.append(copy.deepcopy(model.beliefState))
-    if len(model.beliefHistory) > len(model.actionHistory):
+    print("Algorithm 13 belief history")
+    print(model.beliefHistory)
+    print(len(model.beliefHistory))
+    print(len(model.actionHistory))
+    print(model.actionHistory)
+    print("---")
+    if len(model.beliefHistory) > len(model.actionHistory): #BUG: I think this should be len(actionHistory) + 1 because you should have one extra belief states than the number of actions. Need to verify this with the algorithms though
         model.beliefHistory.pop(0)
 
 # Algorithm 14: sPOMDP Belief Update
@@ -166,12 +183,12 @@ def updateBeliefState(model, b, a, o):
         for m_prime in range(len(b)):
             joint[m][m_prime] = (dirichlet.mean(model.TCounts[a_index, m, :])[m_prime])*b[m]#model.T[m][a_index][m_prime]*b[m]
 
-    b_prime = [0 for val in range(m)]
+    b_prime = np.zeros(len(b))
     for m_prime in range(len(b)):
         for m in range(len(b)):
             b_prime[m_prime] = b_prime[m_prime] + joint[m][m_prime]
 
-    for (m_idx, m) in enumerate(model.env.SDE_List):
+    for (m_idx, m) in enumerate(model.env.SDE_Set):
         multFactor = int(m[0] == o)
         b_prime[m_idx] = b_prime[m_idx]*multFactor
 
@@ -189,16 +206,29 @@ def smoothBeliefHistory(model, history, beliefHistory):
     for i in range(3):
         savedBeliefs = copy.deepcopy(beliefHistory[i])
         largestMatching = largestConsistentSequence(model.trieHead,history[2*i:])
-        matching = [sde for sde in model.env.SDE_Set if sde[0:len(largestMatching)] == largestMatching] #Only include those SDEs that contain thte largestMatching sequence at their beginning
-        beliefHistory[i] = [0 for val in range(len(beliefHistory[i]))]
+        matching = [sde for sde in model.env.SDE_Set if sde[0:len(largestMatching)] == largestMatching] #Only include those SDEs that contain the largestMatching sequence at their beginning
+        beliefHistory[i] = np.zeros(len(beliefHistory[i]))
+        print("matching")
+        print(matching)
         for match in matching:
+            print("here")
             matchingState = model.env.SDE_Set.index(match)
+            print(model.env.SDE_Set)
+            print(matchingState)
+            print("saved beliefs")
+            print(savedBeliefs)
+            print("history")
+            print(history)
             beliefHistory[i][matchingState] = savedBeliefs[matchingState]
 
         total = 0
-        for m in len(model.env.SDE_Set):
+        for m in range(len(model.env.SDE_Set)):
             total = total + beliefHistory[i][m]
-        for m in len(model.env.SDE_Set):
+        print(beliefHistory)
+        print(total)
+        print("DFDFD")
+        exit()
+        for m in range(len(model.env.SDE_Set)):
             beliefHistory[i][m] = beliefHistory[i][m] / total
 
     return beliefHistory
@@ -214,8 +244,8 @@ def updateTransitionFunctionPosteriors(model, a, o):
             counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
             totalCounts = totalCounts + counts[m_idx][mp_idx]
 
-    for m_idx in range(model.beliefStates):
-        for mp_idx in range(model.beliefStates):
+    for m_idx in range(len(model.beliefState)):
+        for mp_idx in range(len(model.beliefState)):
             counts[m_idx][mp_idx] = counts[m_idx][mp_idx] / totalCounts
             model.TCounts[a_index][m_idx][mp_idx] = model.TCounts[a_index][m_idx][mp_idx] + counts[m_idx][mp_idx]
 
