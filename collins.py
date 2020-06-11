@@ -1,5 +1,7 @@
 import numpy as np
 import copy
+from scipy.stats import dirichlet, entropy
+import random
 
 
 # Helper class to be used with the trie in the model
@@ -69,7 +71,7 @@ class CollinsModel():
         self.beliefState = np.zeros([1,len(self.env.O_S)])
         sdeFirstObservations = [sde[0] for sde in self.env.SDE_Set]
         self.beliefState[sdeFirstObservations.index(self.environment.get_observation())] = 1
-        self.beliefState = self.beliefState / np.sum(beliefState)
+        self.beliefState = self.beliefState / np.sum(self.beliefState)
         self.beliefHistory = []
         self.beliefHistory.append(copy.deepcopy(self.beliefState))
         self.actionHistory = []
@@ -90,15 +92,15 @@ def psblLearning(env, numActions, explore, patience,minGain):
         for i in range(numActions):
             if not policy:
                 # Add actions of an SDE to the policy or random actions
-                policy = updatePolicy(env, explore)
+                policy = updatePolicy(model, explore, prevOb)
             action = policy.pop()
-            nextOb = env.step(action)
+            nextOb = model.env.step(action)
             # Algorithm 13:
             updateModelParameters(model, action, prevOb, nextOb)
             prevOb = nextOb
 
-        newSurprise = computeSurprise(env)
-        if newSuprise < minSurprise:
+        newSurprise = computeSurprise(model)
+        if newSurprise < minSurprise:
             minSurprise = newSurprise
             minSurpriseModel = copy.deepcopy(model)
             splitsSinceMin = 0
@@ -110,9 +112,30 @@ def psblLearning(env, numActions, explore, patience,minGain):
         foundSplit = trySplit(model)
     return minSurpriseModel
 
+# Helper Function for Algorithm 10
+def updatePolicy(model,explore,prevObservation):
+    random_sample = np.random.random
+    matchingSDEs = model.env.get_SDE(prevObservation)
+    randSDE = random.choice(matchingSDEs)
+    policy = randSDE[1::2] # Need to pull every other value since both observations and actions are stored in the SDE, but only a policy should be returned
+    if random_sample < explore:
+        return policy
+    else:
+        return random.choices(model.env.A_S, k=len(policy))
+
+# Helper Function for Algorithm 10
+def computeSurprise(model):
+    zetas = np.sum(model.TCounts,axis=2) #A AxM matrix
+    psi = np.sum(zetas)
+    surprise = 0
+    for m in range(len(model.env.SDE_Set)):
+        for a in range(len(model.env.A_S)):
+            surprise = surprise + ((zetas[a][m] / psi)*(entropy((dirichlet.mean(model.TCounts[a, m, :])), base=len(model.env.SDE_Set))))
+    return surprise
+
 
 #Algorithm 13: Update sPOMDP Model Parameters
-def updateModelParameters(model, action, prevOb, nextOb):
+def updateModelParameters(model, a, prevOb, nextOb):
     model.actionHistory.append(a)
     model.observationHistory.append(nextOb)
     history = [val for pair in zip(model.actionHistory,model.observationHistory) for val in pair]
@@ -155,7 +178,7 @@ def updateBeliefState(model, b, a, o):
     total = 0
     for m in range(len(b)):
         total = total + b_prime[m]
-    for m in rnage(len(b)):
+    for m in range(len(b)):
         b_prime[m] = b_prime[m] / total
     return b_prime
 
@@ -188,7 +211,7 @@ def updateTransitionFunctionPosteriors(model, a, o):
     for (m_idx, m) in enumerate(model.env.SDE_Set):
         for (mp_idx, m_prime) in enumerate(model.env.SDE_Set):
             multFactor = int(m_prime[0] == o)
-            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * beliefHistory[0][m_idx]
+            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
             totalCounts = totalCounts + counts[m_idx][mp_idx]
 
     for m_idx in range(model.beliefStates):
@@ -225,7 +248,7 @@ def trySplit(model):
     G = []
     # Generate the list G that is used to order the model splitting
     mTrajLengths = [len(sde) for sde in model.env.SDE_Set]
-    sortedIndexes = sorted(range(len(mTrajLengths),key= mTrajLengths.__getitem__))
+    sortedIndexes = sorted(range(len(mTrajLengths),key=mTrajLengths.__getitem__))
     for m in sortedIndexes:
         for a in model.env.A_S:
             # Note: These are only sorted according to the length of m.trajectory, as described in the algorithm (i.e. the sorting with respect to the action a is arbitrary)
@@ -239,15 +262,15 @@ def trySplit(model):
             #Set m1 and m2 to be the two most likely states that are transitioned into from state m taking action a
             m_index = model.env.SDE_Set.index(state)
             a_index = model.env.A_S.index(action)
-            transitionSetProbs = dirichlet.mean(model.TCounts[a_index, m_idx, :])
+            transitionSetProbs = dirichlet.mean(model.TCounts[a_index, m_index, :])
             orderedVals = copy.deepcopy(transitionSetProbs)
             orderedVals.sort()
             prob1 = orderedVals[-1] #largest probability
-            prob2 = orderedvals[-2] #second largest probability
+            prob2 = orderedVals[-2] #second largest probability
             sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
             sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
-            m1 = env.get_SDE()[sde1_idx]
-            m2 = env.get_SDE()[sde2_idx]
+            m1 = model.env.get_SDE()[sde1_idx]
+            m2 = model.env.get_SDE()[sde2_idx]
 
             newOutcome1 = copy.deepcopy(m1)
             newOutcome1.insert(0,action)
