@@ -61,16 +61,12 @@ class CollinsModel():
         self.observationHistory.append(firstObservation)
         self.beliefHistory = []
         self.beliefHistory.append(copy.deepcopy(self.beliefState))
-        print(self.beliefState)
-        print(self.beliefHistory)
-        print("YAY")
         self.minGain = minimumGain
 
     # Reinitialize a model (after the new SDEs have been inserted)
     def reinitializeModel(self):
         self.TCounts = np.ones((len(self.env.A_S),len(self.env.SDE_Set),len(self.env.SDE_Set)))
         self.OneTCounts = np.ones((len(self.env.A_S),len(self.env.A_S),len(self.env.SDE_Set),len(self.env.SDE_Set),len(self.env.SDE_Set)))
-        
         self.beliefState = np.zeros([1,len(self.env.O_S)])
         sdeFirstObservations = [sde[0] for sde in self.env.SDE_Set]
         self.beliefState[sdeFirstObservations.index(self.environment.get_observation())] = 1
@@ -93,8 +89,8 @@ def psblLearning(env, numActions, explore, patience,minGain):
     foundSplit = True
     while foundSplit:
         for i in range(numActions):
-            # if i % 1000 == 0:
-                # print(i)
+            if i % 1000 == 0:
+                print(i)
             if not policy:
                 # Add actions of an SDE to the policy or random actions
                 policy = updatePolicy(model, explore, prevOb)
@@ -102,13 +98,11 @@ def psblLearning(env, numActions, explore, patience,minGain):
             nextOb = model.env.step(action)
             # Algorithm 13:
             updateModelParameters(model, action, prevOb, nextOb)
-            print("model beliefHistory")
-            print(model.beliefHistory)
-            print("observation history")
-            print(model.observationHistory)
             prevOb = nextOb
 
         newSurprise = computeSurprise(model)
+        print("Transition Probabilities:")
+        print(printTransitionProbabilities(model))
         if newSurprise < minSurprise:
             minSurprise = newSurprise
             minSurpriseModel = copy.deepcopy(model)
@@ -151,10 +145,8 @@ def updateModelParameters(model, a, prevOb, nextOb):
     #Note: the previous line will only work for lists of the same length. Since the observation history has one more element, we need to append the nextOb to the end of the history
     history.append(nextOb)
     maxOutcomeLength = max([len(sde) for sde in model.env.SDE_Set])
-    if len(history) > maxOutcomeLength + 6:
+    if len(history) >= maxOutcomeLength + 6:
         # Algorithm 15
-        print("beliefHistory")
-        print(model.beliefHistory)
         model.beliefHistory = smoothBeliefHistory(model,history, model.beliefHistory)
         # Algorithm 16
         updateTransitionFunctionPosteriors(model, a, nextOb)
@@ -166,13 +158,7 @@ def updateModelParameters(model, a, prevOb, nextOb):
     # Algorithm 14
     model.beliefState = updateBeliefState(model, model.beliefState, a, nextOb)
     model.beliefHistory.append(copy.deepcopy(model.beliefState))
-    print("Algorithm 13 belief history")
-    print(model.beliefHistory)
-    print(len(model.beliefHistory))
-    print(len(model.actionHistory))
-    print(model.actionHistory)
-    print("---")
-    if len(model.beliefHistory) > len(model.actionHistory): #BUG: I think this should be len(actionHistory) + 1 because you should have one extra belief states than the number of actions. Need to verify this with the algorithms though
+    if len(model.beliefHistory) > len(model.actionHistory) + 1: #BUG: I think this should be len(actionHistory) + 1 because you should have one extra belief states than the number of actions. Need to verify this with the algorithms though
         model.beliefHistory.pop(0)
 
 # Algorithm 14: sPOMDP Belief Update
@@ -208,26 +194,13 @@ def smoothBeliefHistory(model, history, beliefHistory):
         largestMatching = largestConsistentSequence(model.trieHead,history[2*i:])
         matching = [sde for sde in model.env.SDE_Set if sde[0:len(largestMatching)] == largestMatching] #Only include those SDEs that contain the largestMatching sequence at their beginning
         beliefHistory[i] = np.zeros(len(beliefHistory[i]))
-        print("matching")
-        print(matching)
         for match in matching:
-            print("here")
             matchingState = model.env.SDE_Set.index(match)
-            print(model.env.SDE_Set)
-            print(matchingState)
-            print("saved beliefs")
-            print(savedBeliefs)
-            print("history")
-            print(history)
             beliefHistory[i][matchingState] = savedBeliefs[matchingState]
 
         total = 0
         for m in range(len(model.env.SDE_Set)):
             total = total + beliefHistory[i][m]
-        print(beliefHistory)
-        print(total)
-        print("DFDFD")
-        exit()
         for m in range(len(model.env.SDE_Set)):
             beliefHistory[i][m] = beliefHistory[i][m] / total
 
@@ -241,7 +214,7 @@ def updateTransitionFunctionPosteriors(model, a, o):
     for (m_idx, m) in enumerate(model.env.SDE_Set):
         for (mp_idx, m_prime) in enumerate(model.env.SDE_Set):
             multFactor = int(m_prime[0] == o)
-            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
+            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[len(model.beliefHistory)-1][m_idx] #Bug?:Should we use beliefHistory[0] if action a corresponds to the beliefHistory[2]?
             totalCounts = totalCounts + counts[m_idx][mp_idx]
 
     for m_idx in range(len(model.beliefState)):
@@ -278,9 +251,9 @@ def trySplit(model):
     G = []
     # Generate the list G that is used to order the model splitting
     mTrajLengths = [len(sde) for sde in model.env.SDE_Set]
-    sortedIndexes = sorted(range(len(mTrajLengths),key=mTrajLengths.__getitem__))
+    sortedIndexes = sorted(range(len(mTrajLengths)),key=mTrajLengths.__getitem__)
     for m in sortedIndexes:
-        for a in model.env.A_S:
+        for a in range(len(model.env.A_S)):
             # Note: These are only sorted according to the length of m.trajectory, as described in the algorithm (i.e. the sorting with respect to the action a is arbitrary)
             G.append(((model.env.SDE_Set[m],model.env.A_S[a]),G_ma[a][m]))
 
@@ -349,3 +322,11 @@ def computeGains(model):
             G[ap][mp] = entropy((dirichlet.mean(model.TCounts[ap, mp, :])), base=len(model.env.SDE_Set)) - sum
     return G
 
+# Helper function to print the transition probabilities
+def printTransitionProbabilities(model):
+    transProbs = np.zeros([len(model.env.A_S),len(model.env.SDE_Set),len(model.env.SDE_Set)])
+    for a in range(len(model.env.A_S)):
+        for m in range(len(model.env.SDE_Set)):
+            transProbs[a][m][:] = np.array(dirichlet.mean(model.TCounts[a, m, :]))
+    print(transProbs)
+    
