@@ -69,8 +69,10 @@ class CollinsModel():
         self.OneTCounts = np.ones((len(self.env.A_S),len(self.env.A_S),len(self.env.SDE_Set),len(self.env.SDE_Set),len(self.env.SDE_Set)))
         self.beliefState = np.zeros([1,len(self.env.O_S)])
         sdeFirstObservations = [sde[0] for sde in self.env.SDE_Set]
-        self.beliefState[sdeFirstObservations.index(self.environment.get_observation())] = 1
+        self.beliefState = [1 if val == self.observationHistory[-1] else 0 for val in sdeFirstObservations]
         self.beliefState = self.beliefState / np.sum(self.beliefState)
+        print("Belief state")
+        print(self.beliefState)
         self.beliefHistory = []
         self.beliefHistory.append(copy.deepcopy(self.beliefState))
         self.actionHistory = []
@@ -102,13 +104,14 @@ def psblLearning(env, numActions, explore, patience,minGain):
 
         newSurprise = computeSurprise(model)
         print("Transition Probabilities:")
-        print(printTransitionProbabilities(model))
+        printTransitionProbabilities(model)
+        print(newSurprise)
         if newSurprise < minSurprise:
             minSurprise = newSurprise
             minSurpriseModel = copy.deepcopy(model)
             splitsSinceMin = 0
         else:
-            splitsSinceMin = 1
+            splitsSinceMin = splitsSinceMin + 1
         if splitsSinceMin > patience:
             break
         #Algorithm 18
@@ -242,8 +245,13 @@ def updateOneStepFunctionPosteriors(model, history):
                 counts[m_idx][mp_idx][mdp_idx] = multFactor1 * multFactor2 * (dirichlet.mean(model.TCounts[ap_index, mp_idx, :])[mdp_idx]) * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
                 totalCounts = totalCounts + counts[m_idx][mp_idx][mdp_idx]
 
+    for m in range(len(model.env.SDE_Set)):
+        for mp in range(len(model.env.SDE_Set)):
+            for mdp in range(len(model.env.SDE_Set)):
+                counts[m][mp][mdp] = counts[m][mp][mdp] / totalCounts
+                model.OneTCounts[a_index][ap_index][m][mp][mdp] = model.OneTCounts[a_index][ap_index][m][mp][mdp] + counts[m][mp][mdp]
     #Note: Not necessary to do updateOneStepProbabilities (analagous to Algorithm 12) since this is handled by the dirichlet distributions
-
+    
 
 # Algorithm 18: sPOMDP Model State Splitting
 def trySplit(model):
@@ -256,7 +264,8 @@ def trySplit(model):
         for a in range(len(model.env.A_S)):
             # Note: These are only sorted according to the length of m.trajectory, as described in the algorithm (i.e. the sorting with respect to the action a is arbitrary)
             G.append(((model.env.SDE_Set[m],model.env.A_S[a]),G_ma[a][m]))
-
+    print("G")
+    print(G)
     for gs in G:
         state = gs[0][0]
         action = gs[0][1]
@@ -296,13 +305,13 @@ def trySplit(model):
             if len(outcomesToAdd) > 1:
                 # Note: The modelState class is not used in this implementation so making a new modelState instance is not necessary.
 
-                model.env.SDE_Set.add(newOutcome1)
-                model.env.SDE_Set.add(newOutcome2)
+                model.env.SDE_Set.append(newOutcome1)
+                model.env.SDE_Set.append(newOutcome2)
                 model.reinitializeModel()
                 return True
             
             elif len(outcomesToAdd) == 1:
-                model.env.SDE_Set.add(outcomesToAdd[0])
+                model.env.SDE_Set.append(outcomesToAdd[0])
                 model.reinitializeModel()
                 return True
             
@@ -312,12 +321,20 @@ def trySplit(model):
 def computeGains(model):
     G = np.zeros([len(model.env.A_S),len(model.env.SDE_Set)])
 
+    # Calculate some matrices that are used in calculating w_ma later
+    mSinglePrimeSum_aPrime = np.sum(model.OneTCounts,axis = 4) #The total number of times the m' state is entered from state m under action a with respect to action a'
+    mSinglePrimeSum = np.sum(mSinglePrimeSum_aPrime,axis = 0) #The total number of times the m' state is entered from state m under action a
+    mPrimeSum = np.sum(np.sum(mSinglePrimeSum, axis = 0), axis=0) #The total number of times the m' state is entered
+
     for mp in range(len(model.env.SDE_Set)):
         for ap in range(len(model.env.SDE_Set)):
             sum = 0
+            w_masum = 0
             for m in range(len(model.env.SDE_Set)):
                 for a in range(len(model.env.SDE_Set)):
-                    w_ma = (dirichlet.mean(model.TCounts[a, m, :])[mp])
+                    # w_ma = (dirichlet.mean(model.TCounts[a, m, :])[mp])
+                    w_ma = mSinglePrimeSum[a, m, mp] / mPrimeSum[mp]
+                    w_masum = w_masum + w_ma
                     sum = sum + (w_ma * entropy((dirichlet.mean(model.OneTCounts[a, ap, m, mp, :])), base=len(model.env.SDE_Set)))
             G[ap][mp] = entropy((dirichlet.mean(model.TCounts[ap, mp, :])), base=len(model.env.SDE_Set)) - sum
     return G
