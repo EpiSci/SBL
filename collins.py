@@ -30,10 +30,17 @@ def insertSequence(head,sequence):
                 insertSequence(leaf,sequence[1:])
                 return None
         # If it gets here, then need to insert a new node
-        newNode = TrieNode(sequence[0])
+        newNode = TrieNode(sequence[0],[])
         head.leaves.append(newNode)
         insertSequence(newNode,sequence[1:])
+        return None
     return None
+
+def printTrie(head):
+    print("Head node is " + str(head.val))
+    for (i,leaf) in enumerate(head.leaves):
+        print("Child " + str(i) + " of head " + str(head.val) + " has value " + str(leaf.val))
+        printTrie(leaf)
         
 
 class CollinsModel():
@@ -43,7 +50,7 @@ class CollinsModel():
         # Initialize the trie
         leaves = []
         for o in self.env.O_S:
-            leaves.append(TrieNode(o))
+            leaves.append(TrieNode(o,[]))
         self.trieHead = TrieNode(None,leaves)
         
         #The instance variable self.env has a current model associated with it. Thus lines 5 through 14 are unnecessary (lines 12 and 13 will be addressed below).
@@ -71,12 +78,11 @@ class CollinsModel():
         sdeFirstObservations = [sde[0] for sde in self.env.SDE_Set]
         self.beliefState = [1 if val == self.observationHistory[-1] else 0 for val in sdeFirstObservations]
         self.beliefState = self.beliefState / np.sum(self.beliefState)
-        print("Belief state")
-        print(self.beliefState)
         self.beliefHistory = []
         self.beliefHistory.append(copy.deepcopy(self.beliefState))
         self.actionHistory = []
-        self.observationHistory = []
+        prevOb = self.observationHistory[-1]
+        self.observationHistory = [prevOb]
 
         
 
@@ -113,6 +119,7 @@ def psblLearning(env, numActions, explore, patience,minGain):
         else:
             splitsSinceMin = splitsSinceMin + 1
         if splitsSinceMin > patience:
+            print("Stopped model splitting due to a lack of patience.")
             break
         #Algorithm 18
         foundSplit = trySplit(model)
@@ -204,8 +211,6 @@ def smoothBeliefHistory(model, history, beliefHistory):
         total = 0
         for m in range(len(model.env.SDE_Set)):
             total = total + beliefHistory[i][m]
-        for m in range(len(model.env.SDE_Set)):
-            beliefHistory[i][m] = beliefHistory[i][m] / total
 
     return beliefHistory
 
@@ -296,22 +301,27 @@ def trySplit(model):
             if newOutcome1 not in model.env.SDE_Set:
                 outcomesToAdd.append(newOutcome1)
                 insertSequence(model.trieHead,newOutcome1)
-
+                
             if newOutcome2 not in model.env.SDE_Set:
                 outcomesToAdd.append(newOutcome2)
                 insertSequence(model.trieHead,newOutcome2)
-
+                
             #Note: Not updating model.MaxOutcomeLength as this is generated dynamically when needed in Algorithm 13
             if len(outcomesToAdd) > 1:
                 # Note: The modelState class is not used in this implementation so making a new modelState instance is not necessary.
 
                 model.env.SDE_Set.append(newOutcome1)
                 model.env.SDE_Set.append(newOutcome2)
+                model.env.SDE_Set.remove(state)
+                print("Split the model. New States: ")
+                print(model.env.SDE_Set)
                 model.reinitializeModel()
                 return True
             
             elif len(outcomesToAdd) == 1:
                 model.env.SDE_Set.append(outcomesToAdd[0])
+                print("Split the model. New States: ")
+                print(model.env.SDE_Set)
                 model.reinitializeModel()
                 return True
             
@@ -327,11 +337,11 @@ def computeGains(model):
     mPrimeSum = np.sum(np.sum(mSinglePrimeSum, axis = 0), axis=0) #The total number of times the m' state is entered
 
     for mp in range(len(model.env.SDE_Set)):
-        for ap in range(len(model.env.SDE_Set)):
+        for ap in range(len(model.env.A_S)):
             sum = 0
             w_masum = 0
             for m in range(len(model.env.SDE_Set)):
-                for a in range(len(model.env.SDE_Set)):
+                for a in range(len(model.env.A_S)):
                     # w_ma = (dirichlet.mean(model.TCounts[a, m, :])[mp])
                     w_ma = mSinglePrimeSum[a, m, mp] / mPrimeSum[mp]
                     w_masum = w_masum + w_ma
@@ -347,3 +357,17 @@ def printTransitionProbabilities(model):
             transProbs[a][m][:] = np.array(dirichlet.mean(model.TCounts[a, m, :]))
     print(transProbs)
     
+# trieHead = TrieNode(None,[])
+# print(trieHead.leaves)
+# insertSequence(trieHead, ["diamond"])
+# insertSequence(trieHead, ["square"])
+# insertSequence(trieHead, ["diamond","x","square"])
+# insertSequence(trieHead, ["diamond","x","diamond"])
+
+# printTrie(trieHead)
+# print(trieHead.leaves)
+# printTrie(trieHead)
+# print(trieHead.leaves[0].val)
+# print(trieHead.leaves[1].val)
+# print(trieHead.leaves[0].leaves[0].val)
+# print(trieHead.leaves[1].leaves[0].val)
