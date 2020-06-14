@@ -12,7 +12,7 @@ import pomdp
 #confidence_factor: The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
 #percentTimeofBudd: A number between 0 and 1. e.g. 0.9 means budd will work on the first 90% of the trajectory
 # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
-def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earlyTermination, budd, conservativeness_factor, confidence_factor, percentTimeofBudd, workbook, filename):
+def activeExperimentation(env, Action_Num, explore, have_control, writeToFile, earlyTermination, budd, conservativeness_factor, confidence_factor, percentTimeofBudd, workbook, filename):
     Current_Observation = env.reset()
 
     SDE_List = env.get_SDE()
@@ -20,10 +20,10 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
     #Generate Full Transitions
     Full_Transition = [Current_Observation]
 
-    # make SDE_Num equal to one if we have control that way we don't generate a large trajectory unnecessarily
+    # make Action_Num equal to one if we have control that way we don't generate a large trajectory unnecessarily
     if have_control is False:
-        #Execute SDE_Num amount of SDE.
-        for num in range(0,SDE_Num):
+        #Execute Action_Num amount of SDEs. This is overkill, as not all of the SDEs will be used, but it doesn't add too much overhead
+        for num in range(0,Action_Num):
             Matching_SDE = env.get_SDE(Current_Observation)
             Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
             Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
@@ -37,7 +37,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
                     Current_Observation = env.step(action)
                     Full_Transition.append(action)
                     Full_Transition.append(Current_Observation)
-            if num+1 < SDE_Num:
+            if num < Action_Num: #Insert random actions between each SDE
                 Current_Observation, random_action = env.random_step()
                 Full_Transition.append(random_action)
                 Full_Transition.append(Current_Observation)
@@ -128,7 +128,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
     if Observation in env.O_S:
         for o in env.O_S:
             if Observation == o:
-                Belief_Mask[(np.array(first_Observations) == Observation)] = 1 
+                Belief_Mask[(np.array(first_Observations) == Observation)] = 1
     else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
         Belief_Mask = SDE_Belief_Mask[Observation]
     Belief_State = Belief_State*Belief_Mask
@@ -138,8 +138,10 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
     Transition_Idx = 0
     # print(Informed_Transition)
     # print(Belief_State)
-    print(len(Informed_Transition))
-    while Transition_Idx < len(Informed_Transition)//2:
+    # while Transition_Idx < len(Informed_Transition)//2:
+    while Transition_Idx < Action_Num: 
+        # print(len(Informed_Transition))
+        # print(Transition_Idx)
         #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
 
         #Create more trajectory if we have control and we're running out
@@ -272,8 +274,7 @@ def activeExperimentation(env, SDE_Num, explore, have_control, writeToFile, earl
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
 
         #<<New Work: For first half of trajectory, only update the trans, only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
-        if Transition_Idx < (len(Informed_Transition)//2)*percentTimeofBudd and budd == True:
-        #if Transition_Idx < len(Informed_Transition):
+        if Transition_Idx < (Action_Num)*percentTimeofBudd and budd:
             max_row = np.argmax(np.max(Belief_Count, axis=1))
             Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
 
@@ -573,5 +574,3 @@ def getGraph(env, transitionProbs):
             edges.append((start, des, 1 - max_probs[start,des]))
     G.add_weighted_edges_from(edges)
     return G
-
-
