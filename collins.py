@@ -159,7 +159,8 @@ def updateModelParameters(model, a, prevOb, nextOb):
         # Algorithm 15
         model.beliefHistory = smoothBeliefHistory(model,history, model.beliefHistory)
         # Algorithm 16
-        updateTransitionFunctionPosteriors(model, a, nextOb)
+        # updateTransitionFunctionPosteriors(model, a, nextOb)
+        updateTransitionFunctionPosteriors(model, model.actionHistory[0], model.observationHistory[1])
         # Algorithm 17
         updateOneStepFunctionPosteriors(model, history)
         model.actionHistory.pop(0)
@@ -212,6 +213,9 @@ def smoothBeliefHistory(model, history, beliefHistory):
         for m in range(len(model.env.SDE_Set)):
             total = total + beliefHistory[i][m]
 
+        for m in range(len(model.env.SDE_Set)):
+            beliefHistory[i][m] = beliefHistory[i][m] / total
+            
     return beliefHistory
 
 #Algorithm 16: Transition Function Posteriors Update
@@ -221,10 +225,11 @@ def updateTransitionFunctionPosteriors(model, a, o):
     totalCounts = 0
     for (m_idx, m) in enumerate(model.env.SDE_Set):
         for (mp_idx, m_prime) in enumerate(model.env.SDE_Set):
-            multFactor = int(m_prime[0] == o)
-            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[len(model.beliefHistory)-1][m_idx] #Bug?:Should we use beliefHistory[0] if action a corresponds to the beliefHistory[2]?
+            # multFactor = int(m_prime[0] == o)
+            multFactor = model.beliefHistory[1][mp_idx] #Note: this is an alternative way of calculating multFactor that is supposed to be better in practice. See Section 6.3.4.3 in Collins' dissertation.
+            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx] #Bug?:Should we use beliefHistory[0] if action a corresponds to the beliefHistory[2]?
             totalCounts = totalCounts + counts[m_idx][mp_idx]
-
+        
     for m_idx in range(len(model.beliefState)):
         for mp_idx in range(len(model.beliefState)):
             counts[m_idx][mp_idx] = counts[m_idx][mp_idx] / totalCounts
@@ -288,7 +293,7 @@ def trySplit(model):
             sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
             m1 = model.env.get_SDE()[sde1_idx]
             m2 = model.env.get_SDE()[sde2_idx]
-
+            
             newOutcome1 = copy.deepcopy(m1)
             newOutcome1.insert(0,action)
             newOutcome1.insert(0,state[0])
@@ -356,18 +361,4 @@ def printTransitionProbabilities(model):
         for m in range(len(model.env.SDE_Set)):
             transProbs[a][m][:] = np.array(dirichlet.mean(model.TCounts[a, m, :]))
     print(transProbs)
-    
-# trieHead = TrieNode(None,[])
-# print(trieHead.leaves)
-# insertSequence(trieHead, ["diamond"])
-# insertSequence(trieHead, ["square"])
-# insertSequence(trieHead, ["diamond","x","square"])
-# insertSequence(trieHead, ["diamond","x","diamond"])
 
-# printTrie(trieHead)
-# print(trieHead.leaves)
-# printTrie(trieHead)
-# print(trieHead.leaves[0].val)
-# print(trieHead.leaves[1].val)
-# print(trieHead.leaves[0].leaves[0].val)
-# print(trieHead.leaves[1].leaves[0].val)

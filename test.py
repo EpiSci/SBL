@@ -23,9 +23,9 @@ def test1_v1(filename,env):
     surpriseThresh = 0 #0; used for one-step extension gain splitting
     entropyThresh = 0.65
     numSDEsPerExperiment = 25000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
-    explore = 0.05
+    explore = 0.5
     # budd.approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename=filename)
-    collins.psblLearning(env, numSDEsPerExperiment, explore,1,gainThresh)
+    collins.psblLearning(env, numSDEsPerExperiment, explore,0,gainThresh)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2(filename,env):
