@@ -16,16 +16,21 @@ def writeNumpyMatrixToFile(sheet, matrix, row=0,col=0):
         rowCount = rowCount + 1 #Provide an extra space between submatrices
     return rowCount
 
+#Writes a numpy matrix to a csv file. Currently supports only 3D numpy matrices.
+def writeNumpyMatrixToCSV(c, matrix):
+    dimensions = matrix.shape
+    for i in range(dimensions[0]):
+        for j in range(dimensions[1]):
+            c.writerow(matrix[i][j][:])
+        c.writerow([]) #Provide an extra space between submatrices
+
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
 def test1_v1(filename,env):
     gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
-    surpriseThresh = 0 #0; used for one-step extension gain splitting
-    entropyThresh = 0.65
     numActionsPerExperiment = 25000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.5
-    # budd.approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh,splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=False, budd=False, filename=filename)
-    collins.psblLearning(env, numActionsPerExperiment, explore,0,gainThresh)
+    collins.psblLearning(env, numActionsPerExperiment, explore,0,gainThresh, True, filename)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2(filename,env):
@@ -67,7 +72,7 @@ if __name__ == "__main__":
 
     date = datetime.datetime.today()
 
-    test1_v2("hi",Example2())
+    test1_v1("hi.csv",Example2())
     exit()
     for subTest in range(5):
         filename = "Testing Data/Test" + str(testNum) + "_v" + str(versionNum) + "_env" + str(envNum) + "_" + str(date.month) + "_" + str(date.day) +  "_" + str(date.hour)  + "_" + str(date.minute) + "_" + str(subTest) + ".xls"

@@ -2,6 +2,10 @@ import numpy as np
 import copy
 from scipy.stats import dirichlet, entropy
 import random
+import csv
+import git
+import pomdp
+import test
 
 
 # Helper class to be used with the trie in the model
@@ -87,7 +91,7 @@ class CollinsModel():
         
 
 # Algorithm 10: PSBL Learning of SPOMDP Models
-def psblLearning(env, numActions, explore, patience,minGain):
+def psblLearning(env, numActions, explore, patience,minGain, writeToFile, filename):
     prevOb = env.reset()
     model = CollinsModel(env,prevOb,minGain)
     minSurpriseModel = None
@@ -95,10 +99,36 @@ def psblLearning(env, numActions, explore, patience,minGain):
     splitsSinceMin = 0
     policy = []
     foundSplit = True
+    modelNum = 0
+
+    if writeToFile:
+        c = csv.writer(open(filename, "w", newline=''))
+        # Write git repo sha
+        repo = git.Repo(search_parent_directories=True)
+        sha = repo.head.object.hexsha
+        c.writerow(["github Code Version (SHA):", sha])
+        
+        # Write the training parameters
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActionsPerExperiment","explore","gainThresh"]
+        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain]
+        c.writerow(parameterNames)
+        c.writerow(parameterVals)
+        
     while foundSplit:
         for i in range(numActions):
             if i % 1000 == 0:
                 print(i)
+            if i % 5000 == 0 or i == numActions - 1:
+                if i == 0:
+                    c.writerow([])
+                    c.writerow(["Model Num" + str(modelNum)])
+                modelTransitionProbs = calcTransitionProbabilities(model)
+                iterError = pomdp.calculateError(model.env, modelTransitionProbs, 10000)
+                c.writerow(["Iteration: ", i])
+                c.writerow(["Error:", iterError])
+                c.writerow(["Transition Probabilities"])
+                test.writeNumpyMatrixToCSV(c, modelTransitionProbs)
+                
             if not policy:
                 # Add actions of an SDE to the policy or random actions
                 policy = updatePolicy(model, explore, prevOb)
@@ -110,7 +140,7 @@ def psblLearning(env, numActions, explore, patience,minGain):
 
         newSurprise = computeSurprise(model)
         print("Transition Probabilities:")
-        printTransitionProbabilities(model)
+        print(calcTransitionProbabilities(model))
         print(newSurprise)
         if newSurprise < minSurprise:
             minSurprise = newSurprise
@@ -123,6 +153,8 @@ def psblLearning(env, numActions, explore, patience,minGain):
             break
         #Algorithm 18
         foundSplit = trySplit(model)
+        
+        modelNum = modelNum + 1
     return minSurpriseModel
 
 # Helper Function for Algorithm 10
@@ -354,11 +386,11 @@ def computeGains(model):
             G[ap][mp] = entropy((dirichlet.mean(model.TCounts[ap, mp, :])), base=len(model.env.SDE_Set)) - sum
     return G
 
-# Helper function to print the transition probabilities
-def printTransitionProbabilities(model):
+# Helper function to calculate the transition probabilities
+def calcTransitionProbabilities(model):
     transProbs = np.zeros([len(model.env.A_S),len(model.env.SDE_Set),len(model.env.SDE_Set)])
     for a in range(len(model.env.A_S)):
         for m in range(len(model.env.SDE_Set)):
             transProbs[a][m][:] = np.array(dirichlet.mean(model.TCounts[a, m, :]))
-    print(transProbs)
+    return(transProbs)
 
