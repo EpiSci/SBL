@@ -7,7 +7,6 @@ import git
 import pomdp
 import test
 
-
 # Helper class to be used with the trie in the model
 class TrieNode():
     def __init__(self, value=None, lfs=[]):
@@ -109,7 +108,7 @@ def psblLearning(env, numActions, explore, patience,minGain, writeToFile, filena
         c.writerow(["github Code Version (SHA):", sha])
         
         # Write the training parameters
-        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActionsPerExperiment","explore","gainThresh"]
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh"]
         parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain]
         c.writerow(parameterNames)
         c.writerow(parameterVals)
@@ -121,7 +120,9 @@ def psblLearning(env, numActions, explore, patience,minGain, writeToFile, filena
             if i % 5000 == 0 or i == numActions - 1:
                 if i == 0:
                     c.writerow([])
-                    c.writerow(["Model Num" + str(modelNum)])
+                    c.writerow(["Model Num " + str(modelNum)])
+                    c.writerow(["Model States: "])
+                    c.writerow(env.SDE_Set)
                 modelTransitionProbs = calcTransitionProbabilities(model)
                 iterError = pomdp.calculateError(model.env, modelTransitionProbs, 10000)
                 c.writerow(["Iteration: ", i])
@@ -393,4 +394,3 @@ def calcTransitionProbabilities(model):
         for m in range(len(model.env.SDE_Set)):
             transProbs[a][m][:] = np.array(dirichlet.mean(model.TCounts[a, m, :]))
     return(transProbs)
-

@@ -3,16 +3,18 @@ from scipy.stats import dirichlet, entropy
 import networkx as nx
 import xlwt
 import git
-from test import writeNumpyMatrixToFile
+from test import writeNumpyMatrixToCSV
 import pomdp
+import csv
 
 #Algorithm 2: Active Experimentation. Returns the belief state and transition probabilities.
 #budd: True - transition updates will not perform "column updates" and only update the transition associated with the most likely belief state
 #conservativeness_factor: How much the entropy is scaled (the higher the #, the higher the penalty for an uncertain starting belief state. Set to 1 or greater, or 0 to disable belief-state entropy penalty)
 #confidence_factor: The number of confident experiments required until learning can end (i.e. what the minimum gamma sum is). Set to 1 or greater
 #percentTimeofBudd: A number between 0 and 1. e.g. 0.9 means budd will work on the first 90% of the trajectory
+#c: the csv writer object (if using writeToFile)
 # Assuming AE environment with M states, the most likely transition should be around min{1 + (1-M)/(confidence_factor*M), alpha}
-def activeExperimentation(env, Action_Num, explore, have_control, writeToFile, earlyTermination, budd, conservativeness_factor, confidence_factor, percentTimeofBudd, workbook, filename):
+def activeExperimentation(env, numActions, explore, have_control, writeToFile, c, earlyTermination, budd, conservativeness_factor, confidence_factor, percentTimeofBudd, filename):
     Current_Observation = env.reset()
 
     SDE_List = env.get_SDE()
@@ -20,10 +22,10 @@ def activeExperimentation(env, Action_Num, explore, have_control, writeToFile, e
     #Generate Full Transitions
     Full_Transition = [Current_Observation]
 
-    # make Action_Num equal to one if we have control that way we don't generate a large trajectory unnecessarily
+    # make numActions equal to one if we have control that way we don't generate a large trajectory unnecessarily
     if have_control is False:
-        #Execute Action_Num amount of SDEs. This is overkill, as not all of the SDEs will be used, but it doesn't add too much overhead
-        for num in range(0,Action_Num):
+        #Execute numActions amount of SDEs. This is overkill, as not all of the SDEs will be used, but it doesn't add too much overhead
+        for num in range(0,numActions):
             Matching_SDE = env.get_SDE(Current_Observation)
             Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
             Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
@@ -37,7 +39,7 @@ def activeExperimentation(env, Action_Num, explore, have_control, writeToFile, e
                     Current_Observation = env.step(action)
                     Full_Transition.append(action)
                     Full_Transition.append(Current_Observation)
-            if num < Action_Num: #Insert random actions between each SDE
+            if num < numActions: #Insert random actions between each SDE
                 Current_Observation, random_action = env.random_step()
                 Full_Transition.append(random_action)
                 Full_Transition.append(Current_Observation)
@@ -139,7 +141,7 @@ def activeExperimentation(env, Action_Num, explore, have_control, writeToFile, e
     # print(Informed_Transition)
     # print(Belief_State)
     # while Transition_Idx < len(Informed_Transition)//2:
-    while Transition_Idx < Action_Num: 
+    while Transition_Idx < numActions: 
         # print(len(Informed_Transition))
         # print(Transition_Idx)
         #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
@@ -274,7 +276,7 @@ def activeExperimentation(env, Action_Num, explore, have_control, writeToFile, e
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
 
         #<<New Work: For first half of trajectory, only update the trans, only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
-        if Transition_Idx < (Action_Num)*percentTimeofBudd and budd:
+        if Transition_Idx < (numActions)*percentTimeofBudd and budd:
             max_row = np.argmax(np.max(Belief_Count, axis=1))
             Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
 
@@ -343,50 +345,29 @@ def activeExperimentation(env, Action_Num, explore, have_control, writeToFile, e
 
         if writeToFile:
             if Transition_Idx == 0:
-                rowIndex = 2
-                errorRowIndex = 1
-                errorColIndex = (len(SDE_List) * 2) + 7
                 modelNum = len(SDE_List) - len(env.O_S)
-                sh = workbook.add_sheet("Model " + str(modelNum))
-                print("Adding workbook sheet " + "Model " + str(modelNum))
-                sh.write(0,0, "Model States: ")
-                sh.write(0,errorColIndex, "Action #:")
-                sh.write(0,errorColIndex+1, "Error:")
-                for SDE_id, SDE in enumerate(SDE_List):
-                    sh.write(0,SDE_id+1, SDE)
-            
-            if Transition_Idx % 5000 == 0:
-                sh.write(rowIndex, 0, "Transition Probabilities at Iteration: " +str(Transition_Idx))
-                rowIndex = rowIndex + 1
-                newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=rowIndex,col=0)
-                rowIndex = newRow + 2
-                sh.write(errorRowIndex,errorColIndex, Transition_Idx)
-                sh.write(errorRowIndex,errorColIndex+1, pomdp.calculateError(env, Action_Probs, 10000))
-                errorRowIndex = errorRowIndex + 1
+                c.writerow([])
+                c.writerow(["Model Num " + str(modelNum)])
 
-            if Transition_Idx + 1 == len(Informed_Transition)//2: #The last action in the trajectory
-                colIndex = 4+len(SDE_List)
-                sh.write(0,colIndex, "Final Transition Probabilities")
-                sh.write(0,colIndex+1, "Number of Actions:")
-                sh.write(0,colIndex+2,Transition_Idx)
-                sh.write(errorRowIndex,errorColIndex, Transition_Idx)
-                sh.write(errorRowIndex,errorColIndex+1, pomdp.calculateError(env, Action_Probs, 10000))
-                newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
-                workbook.save(filename)
-                print("Done writing to file")
-
+                c.writerow(["Model States: "])
+                c.writerow(env.SDE_Set)
+                
+            if Transition_Idx % 5000 == 0 or Transition_Idx == numActions - 1:
+                iterError = pomdp.calculateError(env, Action_Probs, 10000)
+                c.writerow(["Iteration: ", Transition_Idx])
+                c.writerow(["Error:", iterError])
+                c.writerow(["Transition Probabilities"])
+                writeNumpyMatrixToCSV(c, Action_Probs)
 
         #<<New Work: Implement a confidence factor that allows for early termination of the algorithm if each transition has been performed a reasonable # of times>>
         if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor) and earlyTermination:
             print("Finished early after " + str(Transition_Idx+1) + " actions")
             if writeToFile:
-                colIndex = 4+len(SDE_List)
-                sh.write(0,colIndex, "Final Transition Probabilities")
-                sh.write(0,colIndex+1, "Number of Actions:")
-                sh.write(0,colIndex+2,Transition_Idx)
-                newRow = writeNumpyMatrixToFile(sh,Action_Probs,row=1,col=colIndex)
-                workbook.save(filename)
-                print("Done writing to file")
+                iterError = pomdp.calculateError(env, Action_Probs, 10000)
+                c.writerow(["Iteration: ", Transition_Idx])
+                c.writerow(["Error:", iterError])
+                c.writerow(["Transition Probabilities"])
+                test.writeNumpyMatrixToCSV(c, Action_Probs)
             break
 
 
@@ -514,32 +495,25 @@ def getModelEntropy(env, transitionProbs):
 
 
 #Algorithm 3: Approximate sPOMPDP Learning.
-def approximateSPOMDPLearning(env, gainThresh, numSDEsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh = 0.55, writeToFile=False,budd=True, earlyTermination=False,conservativeness_factor=0, confidence_factor=100,have_control=False, filename=None, percentTimeofBudd=0.9):
-    book = None
-    #Initialize model
+def approximateSPOMDPLearning(env, gainThresh, numActions, explore, surpriseThresh, splitWithEntropy=True, entropyThresh = 0.55, writeToFile=False,budd=True, earlyTermination=False,conservativeness_factor=0, confidence_factor=100,have_control=False, filename=None, percentTimeofBudd=0.9):
+
+    if writeToFile:
+        c = csv.writer(open(filename, "w", newline=''))
+        # Write git repo sha
+        repo = git.Repo(search_parent_directories=True)
+        sha = repo.head.object.hexsha
+        c.writerow(["github Code Version (SHA):", sha])
+
+        # Write the training parameters
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh","surpiseThresh","splitWithEntropy", "entropyThresh","earlyTermination","budd","conservativeness_factor","confidence_factor","have_control"]
+        parameterVals = [env.O_S, env.A_S, env.Alpha, env.Epsilon, numActions, explore, gainThresh, surpriseThresh, splitWithEntropy, entropyThresh, earlyTermination, budd, conservativeness_factor, confidence_factor, have_control]
+        c.writerow(parameterNames)
+        c.writerow(parameterVals)
+    
     while True:
         print(env.SDE_Set)
-        if book == None and writeToFile:
-            book = xlwt.Workbook()
-            sh = book.add_sheet("Training Parameters")
-            parameterDict = {"Environment Observations":env.O_S,"Environment Actions":env.A_S,"alpha":env.Alpha,"epsilon":env.Epsilon, "numSDEsPerExperiment":numSDEsPerExperiment,"SurpriseThresh":surpriseThresh,"explore":explore,"gainThresh":gainThresh,"splitWithEntropy":splitWithEntropy, "entropyThresh":entropyThresh, "earlyTermination":earlyTermination,"budd":budd,"conservativeness_factor":conservativeness_factor,"confidence_factor":confidence_factor,"have_control":have_control}
-            repo = git.Repo(search_parent_directories=True)
-            sha = repo.head.object.hexsha
-            sh.write(0,0, "github Code Version (SHA): ")
-            sh.write(0,1, sha)
-            rowIndex = 1
-            #Write parameters to the excel file
-            for parameterName in parameterDict:
-                sh.write(rowIndex,0, parameterName)
-                if isinstance(parameterDict[parameterName],list):
-                    for (item_index,item) in enumerate(parameterDict[parameterName]):
-                        sh.write(rowIndex,1+item_index, item)
-                else:
-                    sh.write(rowIndex,1, parameterDict[parameterName])
-                rowIndex=rowIndex+1
-            book.save(filename)
-
-        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env, numSDEsPerExperiment, explore, writeToFile=writeToFile, workbook=book, earlyTermination=earlyTermination,budd=budd,percentTimeofBudd=percentTimeofBudd,conservativeness_factor=conservativeness_factor, confidence_factor=confidence_factor, have_control=have_control, filename=filename)
+        
+        (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env=env, numActions=numActions, explore=explore, writeToFile=writeToFile, c=c,earlyTermination=earlyTermination,budd=budd,percentTimeofBudd=percentTimeofBudd,conservativeness_factor=conservativeness_factor, confidence_factor=confidence_factor, have_control=have_control, filename=filename)
         print("||||||||||||||||||||")
         # print(OneStep_Gammas)
         print("||||||||||||||||||||")
