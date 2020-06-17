@@ -326,7 +326,11 @@ def trySplit(model):
             prob1 = orderedVals[-1] #largest probability
             prob2 = orderedVals[-2] #second largest probability
             sde1_idx = np.where(transitionSetProbs == prob1)[0][0]
-            sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
+            if np.where(transitionSetProbs == prob1)[0].size > 1: # In this case, the most likely probability actually occurs twice (e.g. a 50-50 transition split)
+                sde2_idx = np.where(transitionSetProbs == prob1)[0][1]
+            else:
+                sde2_idx = np.where(transitionSetProbs == prob2)[0][0]
+
             m1 = model.env.get_SDE()[sde1_idx]
             m2 = model.env.get_SDE()[sde2_idx]
             
