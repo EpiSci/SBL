@@ -102,6 +102,8 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
 
     if writeToFile:
         c = csv.writer(open(filename, "w", newline=''))
+        c.writerow([x for x in range(10)])
+        
         # Write git repo sha
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha

@@ -502,6 +502,8 @@ def approximateSPOMDPLearning(env, gainThresh, numActions, explore, surpriseThre
 
     if writeToFile:
         c = csv.writer(open(filename, "w", newline=''))
+        c.writerow([x for x in range(30)])
+        
         # Write git repo sha
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
