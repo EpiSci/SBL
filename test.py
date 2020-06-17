@@ -27,20 +27,22 @@ def writeNumpyMatrixToCSV(c, matrix):
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
 def test1_v1(filename,env):
-    gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
-    numActionsPerExperiment = 25000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
-    explore = 0.5
-    collins.psblLearning(env, numActionsPerExperiment, explore,0,gainThresh, True, filename)
+    gainThresh = 0 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    insertRandActions = True
+    explore = 0.05 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
+    patience = 0
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2(filename,env):
-    gainThresh = 0.05 #Threshold of gain to determine if the model should stop learning
+    gainSplitThresh = 0.05 #Threshold of gain to determine if the model should stop learning
     surpriseThresh = 0 #0; used for one-step extension gain splitting
     entropyThresh = 0.55
     numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     percentTimeofBudd = 0.9
-    budd.approximateSPOMDPLearning(env, gainThresh, numActionsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
+    budd.approximateSPOMDPLearning(env=env, gainThresh=gainSplitThresh, numActionsPerExperiment=numActionsPerExperiment, explore=explore, surpriseThresh=surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1(filename,env):
@@ -62,6 +64,7 @@ def test2_v2(filename,env):
     percentTimeofBudd = 0.9
     budd.approximateSPOMDPLearning(env, gainThresh, numActionsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = True, conservativeness_factor=0, confidence_factor=50, filename=filename)
 
+    
 if __name__ == "__main__":
     testNum = 1
     versionNum = 1
@@ -72,11 +75,9 @@ if __name__ == "__main__":
 
     date = datetime.datetime.today()
 
-    test1_v2("hi2.csv",Example2())
-    exit()
+    # test1_v("hi2.csv",Example2())
     for subTest in range(5):
-        filename = "Testing Data/Test" + str(testNum) + "_v" + str(versionNum) + "_env" + str(envNum) + "_" + str(date.month) + "_" + str(date.day) +  "_" + str(date.hour)  + "_" + str(date.minute) + "_" + str(subTest) + ".xls"
+        filename = "Testing Data/Test" + str(testNum) + "_v" + str(versionNum) + "_env" + str(envNum) + "_" + str(date.month) + "_" + str(date.day) +  "_" + str(date.hour) + "_" + str(date.minute) + "_" + str(subTest) + ".csv"
         print(filename)
         env = locals()[envString]()
         locals()[testString](filename,env)
-        #test1_v2(filename)

@@ -90,7 +90,7 @@ class CollinsModel():
         
 
 # Algorithm 10: PSBL Learning of SPOMDP Models
-def psblLearning(env, numActions, explore, patience,minGain, writeToFile, filename):
+def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename):
     prevOb = env.reset()
     model = CollinsModel(env,prevOb,minGain)
     minSurpriseModel = None
@@ -131,8 +131,8 @@ def psblLearning(env, numActions, explore, patience,minGain, writeToFile, filena
                 test.writeNumpyMatrixToCSV(c, modelTransitionProbs)
                 
             if not policy:
-                # Add actions of an SDE to the policy or random actions
-                policy = updatePolicy(model, explore, prevOb)
+                # Add actions of an SDE to the policy or random actions. This will also add a random action between SDEs if insertRandActions is enabled
+                policy = updatePolicy(model, explore, prevOb, insertRandActions)
             action = policy.pop()
             nextOb = model.env.step(action)
             # Algorithm 13:
@@ -159,11 +159,14 @@ def psblLearning(env, numActions, explore, patience,minGain, writeToFile, filena
     return minSurpriseModel
 
 # Helper Function for Algorithm 10
-def updatePolicy(model,explore,prevObservation):
+def updatePolicy(model,explore,prevObservation,insertRandActions):
     random_sample = np.random.random()
     matchingSDEs = model.env.get_SDE(prevObservation)
     randSDE = random.choice(matchingSDEs)
     policy = randSDE[1::2] # Need to pull every other value since both observations and actions are stored in the SDE, but only a policy should be returned
+    if insertRandActions:
+        policy.append(random.choice(model.env.A_S))
+    
     if random_sample < explore and not not policy:
         return policy
     else:
