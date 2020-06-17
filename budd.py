@@ -505,7 +505,7 @@ def approximateSPOMDPLearning(env, gainThresh, numActions, explore, surpriseThre
         c.writerow(["github Code Version (SHA):", sha])
 
         # Write the training parameters
-        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh","surpiseThresh","splitWithEntropy", "entropyThresh","earlyTermination","budd","conservativeness_factor","confidence_factor","have_control"]
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainSplitThresh","surpiseThresh","splitWithEntropy", "entropyThresh","earlyTermination","budd","conservativeness_factor","confidence_factor","have_control"]
         parameterVals = [env.O_S, env.A_S, env.Alpha, env.Epsilon, numActions, explore, gainThresh, surpriseThresh, splitWithEntropy, entropyThresh, earlyTermination, budd, conservativeness_factor, confidence_factor, have_control]
         c.writerow(parameterNames)
         c.writerow(parameterVals)
