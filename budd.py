@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import dirichlet, entropy
 import networkx as nx
 import xlwt
-import git
+import git  # Note: The name of the python library is GitPython
 from test import writeNumpyMatrixToCSV
 import pomdp
 import csv
@@ -367,7 +367,7 @@ def activeExperimentation(env, numActions, explore, have_control, writeToFile, c
                 c.writerow(["Iteration: ", Transition_Idx])
                 c.writerow(["Error:", iterError])
                 c.writerow(["Transition Probabilities"])
-                test.writeNumpyMatrixToCSV(c, Action_Probs)
+                writeNumpyMatrixToCSV(c, Action_Probs)
             break
 
 
