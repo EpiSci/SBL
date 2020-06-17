@@ -118,7 +118,7 @@ def activeExperimentation(env, numActions, explore, have_control, writeToFile, c
         if num_Correspond > 1:
             SDE_Chance[(np.array(first_Observations) == SDE[0])] = (1 - env.Alpha**2)/(num_Correspond - 1)
         SDE_Chance[SDE_idx] = env.Alpha**2
-        print(SDE_Chance)
+        # print(SDE_Chance)
         SDE_Chance = SDE_Chance/np.sum(SDE_Chance)
         SDE_Belief_Mask.append(SDE_Chance)
 
@@ -392,10 +392,9 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
     didSplit = False
     newEnv = env
     
+    print("----- Trying Split By Surprise -----")
     print("OneStep_Gammas")
     print(OneStep_Gammas)
-    print("----------------------")
-
 
     m1_prime = []
     m2_prime = []
@@ -472,8 +471,8 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
     if outcomesToAdd > 1:
         SDE_Set_new.remove(m_optimal)
 
-    print(m1_new)
-    print(m2_new)
+    print("First new state: " + str(m1_new))
+    print("Second new state :" + str(m2_new))
     
     newEnv = pomdp.genericModel(env.O_S, env.A_S, env.State_Size, SDE_Set_new, env.Alpha, env.Epsilon, env.Node_Set)
     return (didSplit, newEnv)
@@ -492,7 +491,8 @@ def getModelEntropy(env, transitionProbs):
             transitionSetEntropy = np.sum(np.multiply(transitionSetProbs,(np.log(transitionSetProbs) / np.log(len(env.SDE_Set))))) * -1
             if transitionSetEntropy > maximum:
                 maximum = transitionSetEntropy
-    print(maximum)
+    print("Maximum transition entropy: " + str(maximum))
+    print("Transiton Probabilities")
     print(transitionProbs)
     return maximum
 
@@ -514,12 +514,13 @@ def approximateSPOMDPLearning(env, gainThresh, numActions, explore, surpriseThre
         c.writerow(parameterVals)
     
     while True:
+        print("|||||||||||||||||||| Learning Environment ||||||||||||||||||||")
+        print("SDEs:")
         print(env.SDE_Set)
         
         (beliefState, probsTrans, actionGammas, OneStep_Gammas) = activeExperimentation(env=env, numActions=numActions, explore=explore, writeToFile=writeToFile, c=c,earlyTermination=earlyTermination,budd=budd,percentTimeofBudd=percentTimeofBudd,conservativeness_factor=conservativeness_factor, confidence_factor=confidence_factor, have_control=have_control, filename=filename)
-        print("||||||||||||||||||||")
+
         # print(OneStep_Gammas)
-        print("||||||||||||||||||||")
 
         gainMA = []
         if splitWithEntropy:
@@ -537,6 +538,7 @@ def approximateSPOMDPLearning(env, gainThresh, numActions, explore, surpriseThre
             break
         # input("Done with the current iteration. Press any key to begin the next iteration.")
 
+    print("Final learned SDE set:")
     print(env.SDE_Set)
 
 def getGraph(env, transitionProbs):

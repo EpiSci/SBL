@@ -142,6 +142,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         newSurprise = computeSurprise(model)
         print("Transition Probabilities:")
         print(calcTransitionProbabilities(model))
+        print("Surprise:")
         print(newSurprise)
         if newSurprise < minSurprise:
             minSurprise = newSurprise
