@@ -75,8 +75,7 @@ if __name__ == "__main__":
 
     date = datetime.datetime.today()
 
-    # test1_v("hi2.csv",Example2())
-    for subTest in range(5):
+    for subTest in range(numSubTests):
         filename = "Testing Data/Test" + str(testNum) + "_v" + str(versionNum) + "_env" + str(envNum) + "_" + str(date.month) + "_" + str(date.day) +  "_" + str(date.hour) + "_" + str(date.minute) + "_" + str(subTest) + ".csv"
         print(filename)
         env = locals()[envString]()
