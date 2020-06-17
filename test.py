@@ -52,7 +52,7 @@ def test2_v1(filename,env):
     numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     percentTimeofBudd = 0.9
-    budd.approximateSPOMDPLearning(env, gainThresh, numActionsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = False, conservativeness_factor=0, confidence_factor=5, filename=filename)
+    budd.approximateSPOMDPLearning(env=env, gainThresh=gainThresh, numActions=numActionsPerExperiment, explore=explore, surpriseThresh=surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control=False, conservativeness_factor=0, confidence_factor=25, filename=filename)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v2(filename,env):
@@ -62,7 +62,7 @@ def test2_v2(filename,env):
     numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     percentTimeofBudd = 0.9
-    budd.approximateSPOMDPLearning(env, gainThresh, numActionsPerExperiment, explore, surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control = True, conservativeness_factor=0, confidence_factor=50, filename=filename)
+    budd.approximateSPOMDPLearning(env=env, gainThresh=gainThresh, numActions=numActionsPerExperiment, explore=explore, surpriseThresh=surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh, writeToFile=True, earlyTermination=True, budd=True, percentTimeofBudd=percentTimeofBudd, have_control=True, conservativeness_factor=0, confidence_factor=25, filename=filename)
 
     
 if __name__ == "__main__":
