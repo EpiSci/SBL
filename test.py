@@ -42,7 +42,7 @@ def test1_v2(filename,env):
     numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     explore = 0.05
     percentTimeofBudd = 0.9
-    budd.approximateSPOMDPLearning(env=env, gainThresh=gainSplitThresh, numActionsPerExperiment=numActionsPerExperiment, explore=explore, surpriseThresh=surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
+    budd.approximateSPOMDPLearning(env=env, gainThresh=gainSplitThresh, numActions=numActionsPerExperiment, explore=explore, surpriseThresh=surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1(filename,env):
@@ -67,7 +67,7 @@ def test2_v2(filename,env):
     
 if __name__ == "__main__":
     testNum = 1
-    versionNum = 1
+    versionNum = 2
     envNum = 2
     numSubTests = 5
     testString = "test"+str(testNum)+"_v"+str(versionNum)

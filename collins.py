@@ -250,7 +250,7 @@ def smoothBeliefHistory(model, history, beliefHistory):
             total = total + beliefHistory[i][m]
 
         for m in range(len(model.env.SDE_Set)):
-            beliefHistory[i][m] = beliefHistory[i][m] / total
+            beliefHistory[i][m] = beliefHistory[i][m] / total #BUG: This line occassionaly throws RuntimeWarning from dividing by zero
             
     return beliefHistory
 
