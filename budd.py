@@ -275,11 +275,16 @@ def activeExperimentation(env, numActions, explore, have_control, writeToFile, c
         # Previous_Belief_State = Previous_Belief_State[:,np.newaxis]
         Belief_Count = np.dot(Previous_Belief_State[:,np.newaxis],Belief_State[np.newaxis, :]) * pow(entropy_scaling, conservativeness_factor)
 
-        #<<New Work: For first half of trajectory, only update the trans, only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
+        #<<New Work: For first percentTimeofBudd of trajectory only update the transition gammas for the transition that corresponds to the most likely starting state. This was done to avoid "column updates".>>
         if Transition_Idx < (numActions)*percentTimeofBudd and budd:
-            max_row = np.argmax(np.max(Belief_Count, axis=1))
-            Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
-
+            # max_row = np.argmax(np.max(Belief_Count, axis=1))
+            max_rows = np.argwhere(Previous_Belief_State == np.amax(Previous_Belief_State))
+            if max_rows.size != 1:
+                Belief_Count[:,:] = 0
+                print(max_rows.size)
+            else:
+                max_row = max_rows[0]
+                Belief_Count[np.arange(len(SDE_List)) != max_row, :] = 0
 
         Model_Action_Idx = env.A_S.index(Action)
 
