@@ -431,9 +431,9 @@ def trySplitBySurprise(env, Action_Probs, Action_Gammas, surpriseThresh, OneStep
                     m_optimal = m
         print("Max Entropy: ")
         print(maxEntropy)
-
+        
     else:
-        (gainMA, entropyMA) = calculateGain(env, Action_Probs, OneStep_Gammas)
+        (gainMA, entropyMA) = pomdp.calculateGain(env, Action_Probs, OneStep_Gammas)
         maxGainIndex = np.unravel_index(np.argmax(gainMA),gainMA.shape)
         if gainMA[maxGainIndex] > surpriseThresh:  #Check to see if gain is high enough
             transitionSetProbs = Action_Probs[maxGainIndex[0],maxGainIndex[1],:]
@@ -534,9 +534,9 @@ def approximateSPOMDPLearning(env, gainThresh, numActions, explore, surpriseThre
             if getModelEntropy(env, probsTrans) < entropyThresh:#Done learning
                 break
         else:
-            (gainMA, entropyMA) = calculateGain(env, probsTrans, OneStep_Gammas)
+            (gainMA, entropyMA) = pomdp.calculateGain(env, probsTrans, OneStep_Gammas)
             #<<New Work: Use the maximum gain within the model to determine if the model should be split or not. This better generalizes to non alpha-epsilon environments>>
-            if  np.max(gainMA) < gainThresh:#Done learning
+            if np.max(gainMA) < gainThresh:#Done learning
                 break
 
         (splitResult, env) = trySplitBySurprise(env, probsTrans, actionGammas, surpriseThresh, OneStep_Gammas, splitWithEntropy)
