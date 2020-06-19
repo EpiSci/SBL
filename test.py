@@ -32,7 +32,8 @@ def test1_v1(filename,env):
     insertRandActions = True
     explore = 0.05 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename)
+    useBudd = False
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2(filename,env):
@@ -67,9 +68,9 @@ def test2_v2(filename,env):
     
 if __name__ == "__main__":
     testNum = 1
-    versionNum = 2
-    envNum = 2
-    numSubTests = 5
+    versionNum = 1
+    envNum = 4
+    numSubTests = 3
     testString = "test"+str(testNum)+"_v"+str(versionNum)
     envString = "Example"+str(envNum)
 
