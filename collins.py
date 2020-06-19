@@ -97,7 +97,7 @@ class CollinsModel():
         
 
 # Algorithm 10: PSBL Learning of SPOMDP Models
-def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename):
+def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd):
     prevOb = env.reset()
     model = CollinsModel(env,prevOb,minGain)
     minSurpriseModel = None
@@ -117,8 +117,8 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         c.writerow(["github Code Version (SHA):", sha])
         
         # Write the training parameters
-        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions"]
-        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions]
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions","useBudd"]
+        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd]
         c.writerow(parameterNames)
         c.writerow(parameterVals)
         
@@ -145,7 +145,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
             action = policy.pop()
             nextOb = model.env.step(action)
             # Algorithm 13:
-            updateModelParameters(model, action, prevOb, nextOb)
+            updateModelParameters(model, action, prevOb, nextOb, useBudd)
             prevOb = nextOb
 
         newSurprise = computeSurprise(model)
@@ -194,7 +194,7 @@ def computeSurprise(model):
 
 
 #Algorithm 13: Update sPOMDP Model Parameters
-def updateModelParameters(model, a, prevOb, nextOb):
+def updateModelParameters(model, a, prevOb, nextOb, useBudd):
     model.actionHistory.append(a)
     model.observationHistory.append(nextOb)
     history = [val for pair in zip(model.observationHistory,model.actionHistory) for val in pair]
@@ -206,7 +206,7 @@ def updateModelParameters(model, a, prevOb, nextOb):
         model.beliefHistory = smoothBeliefHistory(model,history, model.beliefHistory)
         # Algorithm 16
         # updateTransitionFunctionPosteriors(model, a, nextOb)
-        updateTransitionFunctionPosteriors(model, model.actionHistory[0], model.observationHistory[1])
+        updateTransitionFunctionPosteriors(model, model.actionHistory[0], model.observationHistory[1],useBudd)
         # Algorithm 17
         updateOneStepFunctionPosteriors(model, history)
         model.actionHistory.pop(0)
@@ -265,7 +265,7 @@ def smoothBeliefHistory(model, history, beliefHistory):
     return beliefHistory
 
 #Algorithm 16: Transition Function Posteriors Update
-def updateTransitionFunctionPosteriors(model, a, o):
+def updateTransitionFunctionPosteriors(model, a, o, useBudd):
     a_index = model.env.A_S.index(a)
     counts = np.zeros([len(model.beliefState),len(model.beliefState)])
     totalCounts = 0
@@ -275,6 +275,31 @@ def updateTransitionFunctionPosteriors(model, a, o):
             multFactor = model.beliefHistory[1][mp_idx] #Note: this is an alternative way of calculating multFactor that is supposed to be better in practice. See Section 6.3.4.3 in Collins' dissertation.
             counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx] #Bug?:Should we use beliefHistory[0] if action a corresponds to the beliefHistory[2]?
             totalCounts = totalCounts + counts[m_idx][mp_idx]
+
+    if useBudd:
+        # max_row = np.argmax(np.max(Belief_Count, axis=1))
+        max_rows = np.argwhere(np.array(model.beliefHistory[0]) == np.amax(np.array(model.beliefHistory[0])))
+        # print("COUNTS")
+        # print(counts)
+        # print(totalCounts)
+        if max_rows.size != 1:
+            counts[:,:] = 0
+        else:
+            max_row = max_rows[0]
+            counts[np.arange(len(model.env.SDE_Set)) != max_row, :] = 0
+
+        if totalCounts == 0:
+            print(counts)
+            print(max_row)
+            print(model.beliefHistory[0])
+            print(model.beliefHistory[1])
+            print(counts)
+            print(a)
+            print(o)
+            print(model.env.SDE_Set)
+            print(model.TCounts)
+            exit()
+        
         
     for m_idx in range(len(model.beliefState)):
         for mp_idx in range(len(model.beliefState)):
