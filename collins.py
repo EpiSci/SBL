@@ -51,15 +51,22 @@ class CollinsModel():
     def __init__(self, environment, firstObservation, minimumGain):
         self.env = environment
         # Initialize the trie
-        leaves = []
-        for o in self.env.O_S:
-            leaves.append(TrieNode(o,[]))
-        self.trieHead = TrieNode(None,leaves)
+        self.trieHead = TrieNode(None,[])
+        for sde in self.env.SDE_Set:
+            insertSequence(self.trieHead,sde)
+        # leaves = []
+        # for o in self.env.O_S:
+        #     leaves.append(TrieNode(o,[]))
+
         
         #The instance variable self.env has a current model associated with it. Thus lines 5 through 14 are unnecessary (lines 12 and 13 will be addressed below).
         #Note: lines 12 and 13 set the belief state to be 1 at the current observation
-        self.beliefState = np.zeros([len(self.env.O_S)])
-        self.beliefState[self.env.O_S.index(firstObservation)] = 1
+        sdeFirstObservations = [sde[0] for sde in self.env.SDE_Set]
+        self.beliefState = [1 if val == firstObservation else 0 for val in sdeFirstObservations]
+        self.beliefState = self.beliefState / np.sum(self.beliefState)
+        
+        # self.beliefState = np.zeros([len(self.env.SDE_Set)])
+        # self.beliefState[self.env.O_S.index(firstObservation)] = 1
         
         # Note: self.TCounts is of shape (a,m,m') and not (m,a,m') for efficiency
         self.TCounts = np.ones((len(self.env.A_S),len(self.env.SDE_Set),len(self.env.SDE_Set)))
