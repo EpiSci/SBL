@@ -45,6 +45,16 @@ def test1_v2(filename,env):
     percentTimeofBudd = 0.9
     budd.approximateSPOMDPLearning(env=env, gainThresh=gainSplitThresh, numActions=numActionsPerExperiment, explore=explore, surpriseThresh=surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
 
+#Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method) with Budd enabled
+def test1_v3(filename,env):
+    gainThresh = 0 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    insertRandActions = True
+    explore = 0.05 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
+    patience = 0
+    useBudd = True
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd)
+
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1(filename,env):
     gainThresh = 0.01 #Threshold of gain to determine if the model should stop learning
@@ -69,8 +79,8 @@ def test2_v2(filename,env):
 if __name__ == "__main__":
     testNum = 1
     versionNum = 1
-    envNum = 4
-    numSubTests = 3
+    envNum = 2
+    numSubTests = 1
     testString = "test"+str(testNum)+"_v"+str(versionNum)
     envString = "Example"+str(envNum)
 
