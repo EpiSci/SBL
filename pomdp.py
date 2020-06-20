@@ -222,6 +222,117 @@ class Example5(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "LRVForward", Action_Dictionary = {"b": 6, "f": 6, "t": 3})) #state 6
         self.Node_Set.append(sPOMDPNode(Observation = "MRVDocked", Action_Dictionary = {"b": 7, "f": 4, "t": 1})) #state 7
 
+
+# The ladder environment. Length is the number of intermediate diamond states between the squares. y actions lead forward, x falls off
+class Example6(sPOMDPModelExample):
+    def __init__(self):
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = ["square", "diamond"] #Observation Set
+        self.A_S = ["x", "y"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[1], self.O_S[1]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[1], self.O_S[0]])
+        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[0]])
+
+        #Generate States
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 1})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 2})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 3})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 3})) #state 3
+
+
+# The ladder environment without SDEs. y actions lead forward, x falls off
+class Example7(sPOMDPModelExample):
+    def __init__(self):
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = ["square", "diamond"] #Observation Set
+        self.A_S = ["x", "y"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+
+        #Generate States
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 1})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 2})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 3})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 3})) #state 3
+
+
+# The slide environment without SDEs
+class Example8(sPOMDPModelExample):
+    def __init__(self):
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = ["square", "diamond"] #Observation Set
+        self.A_S = ["x", "y"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+
+        #Generate States
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 1})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 2})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 3, "y": 3})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 2})) #state 3
+
+# The slide environment with SDEs
+class Example9(sPOMDPModelExample):
+    def __init__(self):
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = ["square", "diamond"] #Observation Set
+        self.A_S = ["x", "y"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[1]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
+        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[0]])
+
+        #Generate States
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 1})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 2})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 3, "y": 3})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 2})) #state 3
+
 #Used in Algorithm 3 code as a generic model.
 class genericModel(sPOMDPModelExample):
     def __init__(self, observationSet,actionSet, stateSize, SDE_Set, alpha, epsilon, environmentNodes):
