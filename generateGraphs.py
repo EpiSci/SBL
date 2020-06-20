@@ -43,12 +43,20 @@ def generateGraphTest1():
 
     plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
     plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
-    for split in model_splits:
-        plt.axvline(x=split)
+    for num in range(len(model_splits)):
+        split = model_splits[num]
+        if num == 0:
+            plt.axvline(x=split, color='gray', label="Model Split")
+        else:
+            plt.axvline(x=split, color='gray')
     plt.xlabel("Number of Actions Taken")
     plt.ylabel("Error")
     plt.title("Model Error vs. Number of Actions Taken")
     plt.legend()
+
+    axes = plt.gca()
+    axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
+
     plt.show()
 
 
