@@ -329,16 +329,16 @@ def updateOneStepFunctionPosteriors(model, history):
                 counts[m_idx][mp_idx][mdp_idx] = multFactor1 * multFactor2 * (dirichlet.mean(model.TCounts[ap_index, mp_idx, :])[mdp_idx]) * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
                 totalCounts = totalCounts + counts[m_idx][mp_idx][mdp_idx]
 
-    if len(model.env.SDE_Set) > 2 and a == "west" and o == "nothing":
-        print(history)
-        print(counts)
-        print(totalCounts)
-        print(model.beliefHistory[0])
-        print(model.beliefHistory[1])
-        print(model.beliefHistory[2])
-        print(a_index)
-        print(ap_index)
-        exit()
+    # if len(model.env.SDE_Set) > 2 and a == "west" and o == "nothing":
+    #     print(history)
+    #     print(counts)
+    #     print(totalCounts)
+    #     print(model.beliefHistory[0])
+    #     print(model.beliefHistory[1])
+    #     print(model.beliefHistory[2])
+    #     print(a_index)
+    #     print(ap_index)
+    #     exit()
     
     for m in range(len(model.env.SDE_Set)):
         for mp in range(len(model.env.SDE_Set)):
