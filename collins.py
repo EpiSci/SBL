@@ -314,6 +314,7 @@ def updateOneStepFunctionPosteriors(model, history):
     a = history[1]
     o_prime = history[2]
     a_prime = history[3]
+    o_dprime = history[4]
     a_index = model.env.A_S.index(a)
     ap_index = model.env.A_S.index(a_prime)
     counts = np.zeros([len(model.beliefState),len(model.beliefState),len(model.beliefState)])
@@ -321,11 +322,24 @@ def updateOneStepFunctionPosteriors(model, history):
     for (m_idx,m) in enumerate(model.env.SDE_Set):
         for (mp_idx,mp) in enumerate(model.env.SDE_Set):
             for (mdp_idx,mdp) in enumerate(model.env.SDE_Set):
-                multFactor1 = int(mp[0] == o)
-                multFactor2 = int(mdp[0] == o_prime)
+                # multFactor1 = int(mp[0] == o) #BUG: Collins pseudocode uses these masks. However, o and o' correspond to m and m' respectively, not m' and m".
+                # multFactor2 = int(mdp[0] == o_prime)
+                multFactor1 = model.beliefHistory[1][mp_idx]
+                multFactor2 = model.beliefHistory[2][mdp_idx]
                 counts[m_idx][mp_idx][mdp_idx] = multFactor1 * multFactor2 * (dirichlet.mean(model.TCounts[ap_index, mp_idx, :])[mdp_idx]) * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
                 totalCounts = totalCounts + counts[m_idx][mp_idx][mdp_idx]
 
+    if len(model.env.SDE_Set) > 2 and a == "west" and o == "nothing":
+        print(history)
+        print(counts)
+        print(totalCounts)
+        print(model.beliefHistory[0])
+        print(model.beliefHistory[1])
+        print(model.beliefHistory[2])
+        print(a_index)
+        print(ap_index)
+        exit()
+    
     for m in range(len(model.env.SDE_Set)):
         for mp in range(len(model.env.SDE_Set)):
             for mdp in range(len(model.env.SDE_Set)):
