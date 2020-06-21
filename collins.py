@@ -177,7 +177,7 @@ def updatePolicy(model,explore,prevObservation,insertRandActions):
     if insertRandActions:
         policy.append(random.choice(model.env.A_S))
     
-    if random_sample < explore and not not policy:
+    if random_sample > explore and not not policy:
         return policy
     else:
         return random.choices(model.env.A_S, k=max(1,len(policy)))# Use max of 1 or the policy length to make sure at least one action is returned
@@ -208,7 +208,7 @@ def updateModelParameters(model, a, prevOb, nextOb, useBudd):
         # updateTransitionFunctionPosteriors(model, a, nextOb)
         updateTransitionFunctionPosteriors(model, model.actionHistory[0], model.observationHistory[1],useBudd)
         # Algorithm 17
-        updateOneStepFunctionPosteriors(model, history)
+        updateOneStepFunctionPosteriors(model, history, useBudd)
         model.actionHistory.pop(0)
         model.observationHistory.pop(0)
 
@@ -309,7 +309,7 @@ def updateTransitionFunctionPosteriors(model, a, o, useBudd):
     #Note: Not necessary to do updateTransitionProbabilities (Algorithm 12) since this is handled by the dirichlet distributions
 
 # Algorithm 17: One Step Transition Function Posteriors Update
-def updateOneStepFunctionPosteriors(model, history):
+def updateOneStepFunctionPosteriors(model, history, useBudd):
     o = history[0]
     a = history[1]
     o_prime = history[2]
@@ -329,16 +329,31 @@ def updateOneStepFunctionPosteriors(model, history):
                 counts[m_idx][mp_idx][mdp_idx] = multFactor1 * multFactor2 * (dirichlet.mean(model.TCounts[ap_index, mp_idx, :])[mdp_idx]) * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
                 totalCounts = totalCounts + counts[m_idx][mp_idx][mdp_idx]
 
-    # if len(model.env.SDE_Set) > 2 and a == "west" and o == "nothing":
-    #     print(history)
-    #     print(counts)
-    #     print(totalCounts)
-    #     print(model.beliefHistory[0])
-    #     print(model.beliefHistory[1])
-    #     print(model.beliefHistory[2])
-    #     print(a_index)
-    #     print(ap_index)
-    #     exit()
+    if useBudd:
+        max_rows = np.argwhere(np.array(model.beliefHistory[0]) == np.amax(np.array(model.beliefHistory[0])))
+        max_rows2 = np.argwhere(np.array(model.beliefHistory[1]) == np.amax(np.array(model.beliefHistory[1])))
+        # print("COUNTS")
+        # print(counts)
+        # print(totalCounts)
+        if max_rows.size != 1 or max_rows2.size != 1:
+            counts[:,:,:] = 0
+        else:
+            max_row = max_rows[0]
+            max_row2 = max_rows2[0]
+            counts[np.arange(len(model.env.SDE_Set)) != max_row, np.arange(len(model.env.SDE_Set)) != max_row2, :] = 0
+            
+    """ if len(model.env.SDE_Set) > 2 and np.sum(model.OneTCounts) > 10000 and a == "east" and o == "nothing" and a_prime == "east" and o_prime == "nothing" and counts[1,1,1] > 0:
+        print(history)
+        print(counts)
+        print(totalCounts)
+        print(model.beliefHistory[0])
+        print(model.beliefHistory[1])
+        print(model.beliefHistory[2])
+        print(a_index)
+        print(ap_index)
+        print(model.OneTCounts)
+        exit()"""
+
     
     for m in range(len(model.env.SDE_Set)):
         for mp in range(len(model.env.SDE_Set)):
@@ -440,6 +455,10 @@ def computeGains(model):
                     w_ma = mSinglePrimeSum[a, m, mp] / mPrimeSum[mp]
                     w_masum = w_masum + w_ma
                     sum = sum + (w_ma * entropy((dirichlet.mean(model.OneTCounts[a, ap, m, mp, :])), base=len(model.env.SDE_Set)))
+                    # print("mp: " + str(model.env.SDE_Set[mp]) + " ap: " + str(model.env.A_S[ap]) + " m: " + str(model.env.SDE_Set[m]) + " a: " + str(model.env.A_S[a]) + " w_ma " + str(w_ma) + " Entropy: " + str(entropy((dirichlet.mean(model.OneTCounts[a, ap, m, mp, :])), base=len(model.env.SDE_Set))) + " OneTCounts " + str(model.OneTCounts[a,ap,m,mp,:]) + " Summation subterm: " + str(w_ma * entropy((dirichlet.mean(model.OneTCounts[a, ap, m, mp, :])), base=len(model.env.SDE_Set))))
+            # print("mp: " + str(model.env.SDE_Set[mp]) + " ap: " + str(model.env.A_S[ap]))
+            # print("Entropy: " + str(entropy((dirichlet.mean(model.TCounts[ap, mp, :])), base=len(model.env.SDE_Set))))
+            # print("Right term summation: " + str(sum))
             G[ap][mp] = entropy((dirichlet.mean(model.TCounts[ap, mp, :])), base=len(model.env.SDE_Set)) - sum
     return G
 
