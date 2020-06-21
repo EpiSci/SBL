@@ -522,6 +522,11 @@ def calculateError(env, modelTransitionProbs, T):
         error_vector = np.dot(Obs_Probs_mod, Belief_State_mod) - np.dot(Obs_Probs_env, Belief_State_env)
         error = error + np.sqrt(error_vector.dot(error_vector))
 
+        Belief_State_mod = Belief_State_mod*Belief_Mask_mod
+        Belief_State_mod = Belief_State_mod/np.sum(Belief_State_mod)
+        Belief_State_env = Belief_State_env*Belief_Mask_env
+        Belief_State_env = Belief_State_env/np.sum(Belief_State_env)
+
         # if np.sqrt(error_vector.dot(error_vector)) >= prev_error:
             # print("Obs_Belief_Mask_mod")
             # print(Obs_Belief_Mask_mod)
