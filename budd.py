@@ -358,7 +358,7 @@ def activeExperimentation(env, numActions, explore, have_control, writeToFile, c
                 c.writerow(env.SDE_Set)
                 
             if Transition_Idx % 5000 == 0 or Transition_Idx == numActions - 1:
-                iterError = pomdp.calculateError(env, Action_Probs, 10000)
+                iterError = pomdp.calculateError(env, Action_Probs, 10000, Action_Gammas)
                 c.writerow(["Iteration: ", Transition_Idx])
                 c.writerow(["Error:", iterError])
                 c.writerow(["Transition Probabilities"])
@@ -368,7 +368,7 @@ def activeExperimentation(env, numActions, explore, have_control, writeToFile, c
         if((np.min(np.sum(Action_Gammas, axis=2)) / len(SDE_List)) >= confidence_factor) and earlyTermination:
             print("Finished early after " + str(Transition_Idx+1) + " actions")
             if writeToFile:
-                iterError = pomdp.calculateError(env, Action_Probs, 10000)
+                iterError = pomdp.calculateError(env, Action_Probs, 10000, Action_Gammas)
                 c.writerow(["Iteration: ", Transition_Idx])
                 c.writerow(["Error:", iterError])
                 c.writerow(["Transition Probabilities"])
