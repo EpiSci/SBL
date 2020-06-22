@@ -1,6 +1,7 @@
 import csv
 import glob
 import numpy as np
+import re
 from matplotlib import pyplot as plt
 
 
@@ -10,8 +11,13 @@ def generateGraphTest1():
     v2Data = []
     model_splits = []
     
-    for versionNum in range(1, 1+2):
+    for versionNum in range(1, 1+3):
         files = glob.glob("./Testing Data/Test1_v" + str(versionNum) + "/*.csv")
+        if len(files) == 0:
+            continue
+        firstFile = files[0]
+        env = re.search("env\d+", firstFile).group()
+        env_num = env[len("env"):]
         data = []
         if versionNum == 1:
             data = v1Data
@@ -51,7 +57,7 @@ def generateGraphTest1():
             plt.axvline(x=split, color='gray')
     plt.xlabel("Number of Actions Taken")
     plt.ylabel("Error")
-    plt.title("Model Error vs. Number of Actions Taken")
+    plt.title("Model Error vs. Number of Actions Taken For Environment " + env_num)
     plt.legend()
 
     axes = plt.gca()

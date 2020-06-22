@@ -354,6 +354,8 @@ class genericModel(sPOMDPModelExample):
         #Generate States
         self.Node_Set = environmentNodes
 
+
+
 # Calculate the gain of an environment given the transition probabilities and the one-step extension gammas
 # Returns the associated entropy of each (m,a) pair and the associated gain
 def calculateGain(env, Action_Probs, OneStep_Gammas):
@@ -442,7 +444,9 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
 
 # Calculate the error of a model as defined in Equation 6.4 (pg 122) of Collins' Thesis
 # env holds the SDEs for the model
-def calculateError(env, modelTransitionProbs, T):
+def calculateError(env, modelTransitionProbs, T, gammas):
+    doRelative = False
+
     Current_Observation = env.reset()
     SDE_List = env.get_SDE()
     state_List = env.Node_Set
@@ -459,6 +463,9 @@ def calculateError(env, modelTransitionProbs, T):
         Current_Observation, random_action = env.random_step()
         Full_Transition.append(random_action)
         Full_Transition.append(Current_Observation)
+
+    # print("Full_Transition")
+    # print(Full_Transition)
 
     # Generate a belief mask for each model state that indicates what the likelihood is of being in each model state given an observation
     Obs_Belief_Mask_mod = np.zeros((len(env.O_S), len(SDE_List)))
@@ -487,11 +494,22 @@ def calculateError(env, modelTransitionProbs, T):
         Obs_Probs_mod[o_idx, sde_idx] = env.Epsilon
     Obs_Probs_env = env.get_observation_probs()
 
+    # print("Obs_Probs_mod")
+    # print(Obs_Probs_mod)
+    # print("Obs_Probs_env")
+    # print(Obs_Probs_env)
+
     # Generate starting belief states for environment and model using first observation
     Observation = Full_Transition[0]
     Observation_Idx = env.O_S.index(Observation)
     Belief_State_mod = Obs_Belief_Mask_mod[Observation_Idx].copy()
     Belief_State_env = Obs_Belief_Mask_env[Observation_Idx].copy()
+
+    # determine the weights for the error from the confidence
+    sum_of_row = np.sum(gammas, axis=2)
+    weights = len(SDE_List) * np.ones((len(env.A_S), len(SDE_List)))
+    weights = np.divide(weights, sum_of_row)
+    weights = 1 - weights
 
     error = 0
     Transition_Idx = 0
@@ -519,8 +537,19 @@ def calculateError(env, modelTransitionProbs, T):
         Belief_State_env = Belief_State_env/np.sum(Belief_State_env)
 
         # Compute error for the current belief states
+        weight_vector = weights[env.A_S.index(Action), :]
+        scale = np.dot(Belief_State_mod, weight_vector)
         error_vector = np.dot(Obs_Probs_mod, Belief_State_mod) - np.dot(Obs_Probs_env, Belief_State_env)
-        error = error + np.sqrt(error_vector.dot(error_vector))
+        
+        if doRelative is True:
+            error = error + (scale * np.sqrt(error_vector.dot(error_vector)))
+        else:
+            error = error + np.sqrt(error_vector.dot(error_vector))
+
+        Belief_State_mod = Belief_State_mod*Belief_Mask_mod
+        Belief_State_mod = Belief_State_mod/np.sum(Belief_State_mod)
+        Belief_State_env = Belief_State_env*Belief_Mask_env
+        Belief_State_env = Belief_State_env/np.sum(Belief_State_env)
 
         # if np.sqrt(error_vector.dot(error_vector)) >= prev_error:
             # print("Obs_Belief_Mask_mod")
@@ -550,3 +579,4 @@ def calculateError(env, modelTransitionProbs, T):
         Transition_Idx = Transition_Idx + 1
 
     return error / T
+
