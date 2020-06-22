@@ -121,12 +121,20 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd]
         c.writerow(parameterNames)
         c.writerow(parameterVals)
-        
+
+    genTraj = False
+    useTraj = False
+    if genTraj:
+        traj = np.zeros([numActions,1],dtype=object)
+
     while foundSplit:
+        if useTraj:
+            numpyTraj = np.load("Testing Data/traj" + str(modelNum) + ".npy")
+            policy = [numpyTraj[i][0] for i in range(numpyTraj.size)]
         for i in range(numActions):
             if i % 1000 == 0:
                 print(i)
-            if i % 5000 == 0 or i == numActions - 1:
+            if i % 100 == 0 or i == numActions - 1:
                 if i == 0:
                     c.writerow([])
                     c.writerow(["Model Num " + str(modelNum)])
@@ -142,11 +150,17 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
             if not policy:
                 # Add actions of an SDE to the policy or random actions. This will also add a random action between SDEs if insertRandActions is enabled
                 policy = updatePolicy(model, explore, prevOb, insertRandActions)
+                if genTraj:
+                    for (actionIdx,action) in enumerate(policy):
+                        if actionIdx + i < numActions:
+                            traj[i + actionIdx] = action
             action = policy.pop()
             nextOb = model.env.step(action)
             # Algorithm 13:
             updateModelParameters(model, action, prevOb, nextOb, useBudd)
             prevOb = nextOb
+        if genTraj:
+            np.save("Testing Data/traj" + str(modelNum) + ".npy",traj)
 
         newSurprise = computeSurprise(model)
         print("Transition Probabilities:")
