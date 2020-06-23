@@ -97,7 +97,7 @@ class CollinsModel():
         
 
 # Algorithm 10: PSBL Learning of SPOMDP Models
-def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd):
+def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd, revisedSplitting):
     prevOb = env.reset()
     model = CollinsModel(env,prevOb,minGain)
     minSurpriseModel = None
@@ -134,7 +134,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         for i in range(numActions):
             if i % 1000 == 0:
                 print(i)
-            if i % 100 == 0 or i == numActions - 1:
+            if i % 5000 == 0 or i == numActions - 1:
                 if i == 0:
                     c.writerow([])
                     c.writerow(["Model Num " + str(modelNum)])
@@ -177,7 +177,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
             print("Stopped model splitting due to a lack of patience.")
             break
         #Algorithm 18
-        foundSplit = trySplit(model)
+        foundSplit = trySplit(model, revisedSplitting)
         
         modelNum = modelNum + 1
     return minSurpriseModel
@@ -378,22 +378,39 @@ def updateOneStepFunctionPosteriors(model, history, useBudd):
     
 
 # Algorithm 18: sPOMDP Model State Splitting
-def trySplit(model):
+def trySplit(model, revisedSplitting):
     G_ma = computeGains(model)
     G = []
     # Generate the list G that is used to order the model splitting
     mTrajLengths = [len(sde) for sde in model.env.SDE_Set]
     sortedIndexes = sorted(range(len(mTrajLengths)),key=mTrajLengths.__getitem__)
     for m in sortedIndexes:
+        # Sort the actions in decreasing order with respect to the associated gain
+        gainsPerAction = [G_ma[a][m] for a in range(len(model.env.A_S))]
+        gainsPerAction = gainsPerAction[::-1] #inverse the list since the previous line sorts from smallest to largest and we want the largest gain first
+        sortedActions = sorted(range(len(model.env.A_S)),key=gainsPerAction.__getitem__)
         for a in range(len(model.env.A_S)):
-            # Note: These are only sorted according to the length of m.trajectory, as described in the algorithm (i.e. the sorting with respect to the action a is arbitrary)
-            G.append(((model.env.SDE_Set[m],model.env.A_S[a]),G_ma[a][m]))
+            G.append(((model.env.SDE_Set[m],model.env.A_S[sortedActions[a]]),G_ma[sortedActions[a]][m]))
+
     print("G")
     print(G)
     for gs in G:
         state = gs[0][0]
         action = gs[0][1]
         gainValue = gs[1]
+
+        if revisedSplitting:
+            # matching = largestConsistentSequence(model.trieHead,[state[0], action])
+            firstOb = [sde[0] for sde in model.env.SDE_Set]
+            skipGainPair = False
+            for (obNum, ob) in enumerate(firstOb):
+                if ob == state[0] and len(model.env.SDE_Set[obNum]) > 1: #Check the first observation of each SDE and, if it has a different first action than the variable "action", then skip as this would generate an invalid SDE
+                    if model.env.SDE_Set[obNum][1] != action:
+                        skipGainPair = True
+                        break
+            if skipGainPair:
+                continue
+        
         if gainValue > model.minGain:
             #Set m1 and m2 to be the two most likely states that are transitioned into from state m taking action a
             m_index = model.env.SDE_Set.index(state)
