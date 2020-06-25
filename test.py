@@ -104,7 +104,7 @@ if __name__ == "__main__":
     testNum = 3
     versionNum = 1
     envNum = 4
-    numSubTests = 1
+    numSubTests = 5
     testString = "test"+str(testNum)+"_v"+str(versionNum)
     envString = "Example"+str(envNum)
 
