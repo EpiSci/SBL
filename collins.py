@@ -117,8 +117,8 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         c.writerow(["github Code Version (SHA):", sha])
         
         # Write the training parameters
-        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions","useBudd"]
-        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd]
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions","useBudd", "revisedSplitting"]
+        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd,revisedSplitting]
         c.writerow(parameterNames)
         c.writerow(parameterVals)
 
