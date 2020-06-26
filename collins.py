@@ -6,6 +6,7 @@ import csv
 import git
 import pomdp
 import test
+import networkx as nx
 
 # Helper class to be used with the trie in the model
 class TrieNode():
@@ -97,7 +98,7 @@ class CollinsModel():
         
 
 # Algorithm 10: PSBL Learning of SPOMDP Models
-def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd, revisedSplitting):
+def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd, revisedSplitting, haveControl, confidence_factor):
     prevOb = env.reset()
     model = CollinsModel(env,prevOb,minGain)
     minSurpriseModel = None
@@ -117,8 +118,9 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         c.writerow(["github Code Version (SHA):", sha])
         
         # Write the training parameters
-        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions","useBudd"]
-        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd]
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions","useBudd", "revisedSplitting", "haveControl", "confidence_factor"]
+        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd, revisedSplitting, haveControl, confidence_factor]
+
         c.writerow(parameterNames)
         c.writerow(parameterVals)
 
@@ -132,6 +134,18 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
             numpyTraj = np.load("Testing Data/traj" + str(modelNum) + ".npy")
             policy = [numpyTraj[i][0] for i in range(numpyTraj.size)]
         for i in range(numActions):
+
+            if confidence_factor is not None and ((np.min(np.sum(model.TCounts, axis=2)) / len(model.env.SDE_Set)) >= confidence_factor):
+                print("Finished early on iteration number " + str(i))
+                if writeToFile:
+                    modelTransitionProbs = calcTransitionProbabilities(model)
+                    iterError = pomdp.calculateError(model.env, modelTransitionProbs, 10000, model.TCounts)
+                    c.writerow(["Iteration: ", i])
+                    c.writerow(["Error:", iterError])
+                    c.writerow(["Transition Probabilities"])
+                    test.writeNumpyMatrixToCSV(c, modelTransitionProbs)
+                break
+
             if i % 1000 == 0:
                 print(i)
             if i % 2500 == 0 or i == numActions - 1:
@@ -149,12 +163,12 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
                 
             if not policy:
                 # Add actions of an SDE to the policy or random actions. This will also add a random action between SDEs if insertRandActions is enabled
-                policy = updatePolicy(model, explore, prevOb, insertRandActions)
+                policy = updatePolicy(model, explore, prevOb, insertRandActions, haveControl, confidence_factor)
                 if genTraj:
                     for (actionIdx,action) in enumerate(policy):
                         if actionIdx + i < numActions:
                             traj[i + actionIdx] = action
-            action = policy.pop()
+            action = policy.pop(0)
             nextOb = model.env.step(action)
             # Algorithm 13:
             updateModelParameters(model, action, prevOb, nextOb, useBudd)
@@ -185,7 +199,11 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
     return minSurpriseModel
 
 # Helper Function for Algorithm 10
-def updatePolicy(model,explore,prevObservation,insertRandActions):
+def updatePolicy(model,explore,prevObservation,insertRandActions, haveControl, confidence_factor):
+
+    if haveControl is True:
+        return haveControlPolicy(model, prevObservation, confidence_factor)
+
     random_sample = np.random.random()
     matchingSDEs = model.env.get_SDE(prevObservation)
     randSDE = random.choice(matchingSDEs)
@@ -332,8 +350,8 @@ def updateTransitionFunctionPosteriors(model, a, o, useBudd):
             print(model.env.SDE_Set)
             print(model.TCounts)
             exit()
-        
-        
+
+
     for m_idx in range(len(model.beliefState)):
         for mp_idx in range(len(model.beliefState)):
             counts[m_idx][mp_idx] = counts[m_idx][mp_idx] / totalCounts
@@ -527,6 +545,119 @@ def calcTransitionProbabilities(model):
             transProbs[a][m][:] = np.array(dirichlet.mean(model.TCounts[a, m, :]))
     return(transProbs)
 
+
+def haveControlPolicy(model, prevObservation, confidence_factor):
+
+    # print(len(Informed_Transition))
+    # print(Transition_Idx)
+    #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
+
+    new_Full_Transition = []
+    transitionProbs = calcTransitionProbabilities(model)
+
+
+    # First predict where we'll be after the last action in the trajectory is performed
+    # Belief_Mask = np.zeros(len(self.env.SDE_Set))
+    # Observation = Informed_Transition[Transition_Idx*2+2]
+    # Action = Informed_Transition[Transition_Idx*2+1]
+    
+    # Model_Action_Idx = env.A_S.index(Action)
+
+    # Future_Belief_State = np.dot(Belief_State, Action_Probs[Model_Action_Idx,:,:])
+
+    # if Observation in env.O_S:
+    #     for o in env.O_S:
+    #         if Observation == o:
+    #             Belief_Mask[(np.array(first_Observations) == Observation)] = 1 #If this is what I think it is, I think we should be using some function of alpha and/or epsilon...
+    # else: #i.e. the array is all zeros and thus has not been changed - must be an SDE observation
+    #     Belief_Mask = SDE_Belief_Mask[Observation]
+
+    # Future_Belief_State = Future_Belief_State*Belief_Mask
+    # Future_Belief_State = Future_Belief_State/np.sum(Future_Belief_State)
+
+    # perform localization if unsure of where we are
+    # Current_Observation = prevObservation
+    # print(prevObservation)
+    nonzero_values = np.count_nonzero(model.beliefState)
+    if entropy(model.beliefState, base=nonzero_values) > 0.75:
+        # print("localizing")
+        Matching_SDE = model.env.get_SDE(prevObservation)
+        Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+        Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
+        for action in Chosen_SDE_Actions:
+            # Current_Observation = model.env.step(action)
+            new_Full_Transition.append(action)
+            # new_Full_Transition.append(Current_Observation)
+
+    else: # try to perform experiments so that we learn what we don't know
+
+        # perform experiment if we're in a place where we can
+        performed_experiment = False
+        current_state = np.argmax(model.beliefState)
+        for action_idx in range(len(model.env.A_S)):
+
+            if np.sum(model.TCounts[action_idx, current_state])  / len(model.env.SDE_Set) < confidence_factor:
+                action = model.env.A_S[action_idx]
+                # Current_Observation = model.env.step(action)
+                new_Full_Transition.append(action)
+                # new_Full_Transition.append(Current_Observation)
+                performed_experiment = True
+                # print("experiment performed: took action " + str(action) + " from state " + str(current_state))
+
+                # now localize again
+                # Matching_SDE = model.env.get_SDE(Current_Observation)
+                # Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+                # Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]  # TODO: this is problematic in future as matching SDEs could have diff observations leading to different actions
+                # # choose first action of multiple SDEs
+                # for action in Chosen_SDE_Actions:
+                #     # Current_Observation = model.env.step(action)
+                #     new_Full_Transition.append(action)
+                #     # new_Full_Transition.append(Current_Observation)
+
+                break
+
+        # if not in a state of interest, try to go to a state of interest
+        if performed_experiment is False:
+            confidences = np.sum(model.TCounts, axis=2) / len(model.env.SDE_Set)
+
+            states_of_interest = np.array(np.where(confidences < confidence_factor))[1,:]
+            state_of_interest = states_of_interest[0]
+            # TODO: Consider optimizing the chosen state based upon proximity
+
+            G = getGraph(model, transitionProbs)
+            shortest_path = nx.dijkstra_path(G, current_state, state_of_interest, weight='weight')
+            # print("shortest_path")
+            # print(shortest_path)
+            # print("shortest path length")
+            # print(nx.dijkstra_path_length(G, current_state, state_of_interest, weight='weight'))
+            action_idx = np.argmax(transitionProbs[:,current_state, shortest_path[1]], axis=0)
+            action = model.env.A_S[action_idx]
+            # Current_Observation = model.env.step(action)
+            new_Full_Transition.append(action)
+            # new_Full_Transition.append(Current_Observation)
+            # print("Performing action " + str(action_idx) + " from state " + str(current_state) + " to get to state " + str(shortest_path[1]))
+
+
+    # policy = new_Full_Transition[1::2] # Need to pull every other value since both observations and actions are stored in the SDE, but only a policy should be returned
+    # return policy
+    # print(new_Full_Transition)
+    return new_Full_Transition
+
+
+def getGraph(model, transitionProbs):
+    transitionProbs = calcTransitionProbabilities(model)
+
+    SDE_List = model.env.get_SDE()
+    G = nx.DiGraph()
+    edges = []
+
+    max_probs = np.max(transitionProbs, axis=0)
+
+    for start in range(len(SDE_List)):
+        for des in range(len(SDE_List)):
+            edges.append((start, des, 1 - max_probs[start,des]))
+    G.add_weighted_edges_from(edges)
+    return G
 
 # h = TrieNode(None,[])
 # insertSequence(h,["nothing1", "west", "nothing"])
