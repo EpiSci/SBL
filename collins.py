@@ -120,6 +120,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         # Write the training parameters
         parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions","useBudd", "revisedSplitting", "haveControl", "confidence_factor"]
         parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd, revisedSplitting, haveControl, confidence_factor]
+
         c.writerow(parameterNames)
         c.writerow(parameterVals)
 
@@ -147,7 +148,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
 
             if i % 1000 == 0:
                 print(i)
-            if i % 5000 == 0 or i == numActions - 1:
+            if i % 2500 == 0 or i == numActions - 1:
                 if i == 0:
                     c.writerow([])
                     c.writerow(["Model Num " + str(modelNum)])
@@ -187,6 +188,8 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         else:
             splitsSinceMin = splitsSinceMin + 1
         if splitsSinceMin > patience:
+            print("TCounts: ")
+            print(model.TCounts)
             print("Stopped model splitting due to a lack of patience.")
             break
         #Algorithm 18
@@ -290,8 +293,19 @@ def smoothBeliefHistory(model, history, beliefHistory):
         for m in range(len(model.env.SDE_Set)):
             total = total + beliefHistory[i][m]
 
+        # if len(model.env.SDE_Set) > 3 and history[0] == "nothing" and history[1] == "west" and history[2] == "goal":
+        #     print("ERROR")
+        #     print(i)
+        #     print(largestMatching)
+        #     print(matching)
+        #     print(beliefHistory[i])
+        #     print("relevant history: ")
+        #     print(history[2*i:])
+        #     print("trie: ")
+            # printTrie(model.trieHead)
+            # exit()
         for m in range(len(model.env.SDE_Set)):
-            beliefHistory[i][m] = beliefHistory[i][m] / total #BUG: This line occassionaly throws RuntimeWarning from dividing by zero
+            beliefHistory[i][m] = beliefHistory[i][m] / total
             
     return beliefHistory
 
@@ -306,7 +320,13 @@ def updateTransitionFunctionPosteriors(model, a, o, useBudd):
             multFactor = model.beliefHistory[1][mp_idx] #Note: this is an alternative way of calculating multFactor that is supposed to be better in practice. See Section 6.3.4.3 in Collins' dissertation.
             counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx] #Bug?:Should we use beliefHistory[0] if action a corresponds to the beliefHistory[2]?
             totalCounts = totalCounts + counts[m_idx][mp_idx]
-
+    # if len(model.env.SDE_Set) > 3:
+    #     print(model.beliefHistory[0])
+    #     print(totalCounts)
+    #     print(model.beliefHistory[1])
+    #     print(dirichlet.mean(model.TCounts[a_index, m_idx, :]))
+    #     print(counts)
+    #     exit()
     if useBudd:
         # max_row = np.argmax(np.max(Belief_Count, axis=1))
         max_rows = np.argwhere(np.array(model.beliefHistory[0]) == np.amax(np.array(model.beliefHistory[0])))
@@ -470,8 +490,15 @@ def trySplit(model, revisedSplitting):
                 model.env.SDE_Set.append(newOutcome1)
                 model.env.SDE_Set.append(newOutcome2)
                 model.env.SDE_Set.remove(state)
+                
+                # Due to an issue in Collins pseudocode, the inserted SDEs are not gauranteed to correctly replace the older SDEs. Thus, if we are removing an SDE, it is best to rebuild the trie
+                model.trieHead = TrieNode(None,[])
+                for sde in model.env.SDE_Set:
+                    insertSequence(model.trieHead, sde)
+                
                 print("Split the model. New States: ")
                 print(model.env.SDE_Set)
+                
                 model.reinitializeModel()
                 return True
             
@@ -632,3 +659,12 @@ def getGraph(model, transitionProbs):
     G.add_weighted_edges_from(edges)
     return G
 
+# h = TrieNode(None,[])
+# insertSequence(h,["nothing1", "west", "nothing"])
+# printTrie(h)
+# print("================")
+# insertSequence(h,["nothing1", "west", "goal"])
+# printTrie(h)
+# print("------------------")
+# insertSequence(h,["nothing1", "east", "goal"])
+# printTrie(h)
