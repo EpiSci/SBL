@@ -154,7 +154,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
                     for (actionIdx,action) in enumerate(policy):
                         if actionIdx + i < numActions:
                             traj[i + actionIdx] = action
-            action = policy.pop()
+            action = policy.pop(0)
             nextOb = model.env.step(action)
             # Algorithm 13:
             updateModelParameters(model, action, prevOb, nextOb, useBudd)
