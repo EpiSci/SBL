@@ -5,7 +5,7 @@ import re
 from matplotlib import pyplot as plt
 
 
-def generateGraphTest1():
+def generateGraphTest1(useFirstPoint):
     # use list and not numpy array since we don't know how many iterations were done
     v1Data = []
     v2Data = []
@@ -39,6 +39,8 @@ def generateGraphTest1():
                     elif row['0'] == 'Iteration: ':
                         iteration_num = float(row['1'])
                     elif row['0'] == 'Error:':
+                        if iteration_num == 0 and useFirstPoint is False:
+                            continue
                         trialData.append([iteration_num + offset_amount, float(row['1'])])
                 data.append(trialData)
 
@@ -61,7 +63,8 @@ def generateGraphTest1():
     plt.legend()
 
     axes = plt.gca()
-    axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
+    if useFirstPoint:
+        axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
 
     plt.show()
 
@@ -235,5 +238,5 @@ def generateGraphTest3():
 
 if __name__ == "__main__":
     
-    generateGraphTest1()
+    generateGraphTest1(True)
     # generateGraphRelativeError()
