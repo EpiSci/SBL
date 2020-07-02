@@ -87,7 +87,7 @@ def test2_v2(filename,env):
     revisedSplitting = False
     collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
 
-#Uses the Test 3 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
+#Uses the Test 3 parameters outlined in the SBLTests.docx file with Collins' method of SDE splitting
 def test3_v1(filename,env):
     gainThresh = 0.05 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
     numActionsPerExperiment = 25000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
@@ -97,7 +97,8 @@ def test3_v1(filename,env):
     useBudd = False
     revisedSplitting = False
     haveControl = False
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl)
+    confidenceFactor = None
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
 
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with improved SDE splitting
@@ -110,7 +111,8 @@ def test3_v3(filename,env):
     useBudd = True
     revisedSplitting = True
     haveControl = False
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl)
+    confidenceFactor = None
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
     
 if __name__ == "__main__":
     testNum = 2
