@@ -48,9 +48,14 @@ def generateGraphTest1(useFirstPoint):
     v2Data = np.array(v2Data)
     v1Data_average = np.mean(v1Data, axis=0)
     v2Data_average = np.mean(v2Data, axis=0)
+    v1Data_stdDev = np.std(v1Data, axis=0)
+    v2Data_stdDev = np.std(v2Data, axis=0)
 
-    plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
-    plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
+    # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
+    plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
+    
+    # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
+    plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:
@@ -69,7 +74,7 @@ def generateGraphTest1(useFirstPoint):
     plt.show()
 
 
-def generateGraphTest2():
+def generateGraphTest2(useFirstPoint):
     # use list and not numpy array since we don't know how many iterations were done
     v1Data = []
     v2Data = []
@@ -103,6 +108,8 @@ def generateGraphTest2():
                     elif row['0'] == 'Iteration: ':
                         iteration_num = float(row['1'])
                     elif row['0'] == 'Error:':
+                        if iteration_num == 0 and useFirstPoint is False:
+                            continue
                         trialData.append([iteration_num + offset_amount, float(row['1'])])
                 data.append(trialData)
 
@@ -110,9 +117,14 @@ def generateGraphTest2():
     v2Data = np.array(v2Data)
     v1Data_average = np.mean(v1Data, axis=0)
     v2Data_average = np.mean(v2Data, axis=0)
+    v1Data_stdDev = np.std(v1Data, axis=0)
+    v2Data_stdDev = np.std(v2Data, axis=0)
 
-    plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="W/out Control")
-    plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="W/ Control")
+    # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="W/out Control")
+    # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="W/ Control")
+    plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="W/out Control",color="blue",markersize=10,capsize=5)
+    
+    plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="W/ Control",color="orange",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:
@@ -124,12 +136,14 @@ def generateGraphTest2():
     plt.title("Model Error vs. Number of Actions Taken For Environment " + env_num)
     plt.legend()
 
+    
     axes = plt.gca()
-    axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
+    if useFirstPoint:
+        axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
 
     plt.show()
 
-def generateGraphRelativeError():
+def generateGraphRelativeError(useFirstPoint):
     # use list and not numpy array since we don't know how many iterations were done
     versionNum = 1
     model_splits = []
@@ -152,14 +166,19 @@ def generateGraphRelativeError():
                 elif row['0'] == 'Iteration: ':
                     iteration_num = float(row['1'])
                 elif row['0'] == 'Error:':
+                    if iteration_num == 0 and useFirstPoint is False:
+                            continue
                     trialData.append([iteration_num + offset_amount, float(row['1'])])
             data.append(trialData)
 
     v1Data = data
     v1Data = np.array(v1Data)
     v1Data_average = np.mean(v1Data, axis=0)
+    v1Data_stdDev = np.std(v1Data, axis=0)
 
-    plt.scatter(v1Data_average[:,0], v1Data_average[:,1])
+
+    # plt.scatter(v1Data_average[:,0], v1Data_average[:,1])
+    plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",color="blue",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:
@@ -172,11 +191,12 @@ def generateGraphRelativeError():
     plt.legend()
 
     axes = plt.gca()
-    axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
+    if useFirstPoint:
+        axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
 
     plt.show()
 
-def generateGraphTest3():
+def generateGraphTest3(useFirstPoint):
     # use list and not numpy array since we don't know how many iterations were done
     v1Data = []
     v2Data = []
@@ -210,6 +230,8 @@ def generateGraphTest3():
                     elif row['0'] == 'Iteration: ':
                         iteration_num = float(row['1'])
                     elif row['0'] == 'Error:':
+                        if iteration_num == 0 and useFirstPoint is False:
+                            continue
                         trialData.append([iteration_num + offset_amount, float(row['1'])])
                 data.append(trialData)
 
@@ -217,9 +239,15 @@ def generateGraphTest3():
     v2Data = np.array(v2Data)
     v1Data_average = np.mean(v1Data, axis=0)
     v2Data_average = np.mean(v2Data, axis=0)
+    v1Data_stdDev = np.std(v1Data, axis=0)
+    v2Data_stdDev = np.std(v2Data, axis=0)
 
-    plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
-    plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
+    
+    # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
+    # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
+    plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
+    
+    plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:
@@ -232,11 +260,12 @@ def generateGraphTest3():
     plt.legend()
 
     axes = plt.gca()
-    axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
+    if useFirstPoint:
+        axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
 
     plt.show()
 
 if __name__ == "__main__":
     
-    generateGraphTest1(True)
+    generateGraphTest3(False)
     # generateGraphRelativeError()
