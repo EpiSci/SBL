@@ -64,9 +64,9 @@ def test1_v3(filename,env):
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1(filename,env):
     haveControl = False
-    confidenceFactor = 100
-    gainThresh = 0.05 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
-    numActionsPerExperiment = 25000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    confidenceFactor = 250
+    gainThresh = 0.0275 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
@@ -77,9 +77,9 @@ def test2_v1(filename,env):
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v2(filename,env):
     haveControl = True
-    confidenceFactor = 100
-    gainThresh = 0.05 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
-    numActionsPerExperiment = 25000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    confidenceFactor = 250
+    gainThresh = 0.0275 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
@@ -114,8 +114,8 @@ def test3_v3(filename,env):
     
 if __name__ == "__main__":
     testNum = 2
-    versionNum = 1
-    envNum = 1
+    versionNum = 2
+    envNum = 2
     numSubTests = 5
     testString = "test"+str(testNum)+"_v"+str(versionNum)
     envString = "Example"+str(envNum)
