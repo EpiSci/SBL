@@ -9,7 +9,6 @@ import test
 import networkx as nx
 
 
-
 # Helper class to be used with the trie in the model
 class TrieNode():
     def __init__(self, value=None, lfs=[]):
@@ -62,7 +61,7 @@ class CollinsModel():
         #     leaves.append(TrieNode(o,[]))
 
         
-        #The instance variable self.env has a current model associated with it. Thus lines 5 through 14 are unnecessary (lines 12 and 13 will be addressed below).
+        #The instance variable self.env has a current model associated with it. Thus lines 5 through 14 are unecessary (lines 12 and 13 will be addressed below).
         #Note: lines 12 and 13 set the belief state to be 1 at the current observation
         sdeFirstObservations = [sde[0] for sde in self.env.SDE_Set]
         self.beliefState = [1 if val == firstObservation else 0 for val in sdeFirstObservations]
@@ -124,8 +123,8 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         c.writerow(["github Code Version (SHA):", sha])
         
         # Write the training parameters
-        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","gainThresh", "insertRandActions","useBudd", "revisedSplitting", "haveControl", "confidence_factor"]
-        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, minGain, insertRandActions, useBudd, revisedSplitting, haveControl, confidence_factor]
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","patience","gainThresh", "insertRandActions","useBudd", "revisedSplitting", "haveControl", "confidence_factor"]
+        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, patience, minGain, insertRandActions, useBudd, revisedSplitting, haveControl, confidence_factor]
 
         c.writerow(parameterNames)
         c.writerow(parameterVals)
@@ -135,6 +134,8 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
     if genTraj:
         traj = np.zeros([numActions,1],dtype=object)
 
+    minSurpriseModelNum = 0
+    
     while foundSplit:
         if useTraj:
             numpyTraj = np.load("Testing Data/traj" + str(modelNum) + ".npy")
@@ -200,6 +201,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         print("Surprise:")
         print(newSurprise)
         if newSurprise < minSurprise:
+            minSurpriseModelNum = 1
             minSurprise = newSurprise
             minSurpriseModel = copy.deepcopy(model)
             splitsSinceMin = 0
@@ -214,6 +216,20 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         foundSplit = trySplit(model, revisedSplitting)
         
         modelNum = modelNum + 1
+    #make it clear which model was returned
+    c.writerow("***********")
+    c.writerow(["Model Num " + str(minSurpriseModelNum)])
+    c.writerow(["Model States: "])
+    c.writerow(env.SDE_Set)
+    modelTransitionProbs = calcTransitionProbabilities(minSurpriseModel)
+    iterError = pomdp.calculateError(minSurpriseModel.env, modelTransitionProbs, 10000, minSurpriseModel.TCounts)
+    c.writerow(["Iteration: ", i])
+    c.writerow(["Error:", iterError])
+    c.writerow(["Transition Probabilities"])
+    test.writeNumpyMatrixToCSV(c, modelTransitionProbs)
+    c.writerow(["Transition Gammas"])
+    test.writeNumpyMatrixToCSV(c, minSurpriseModel.TCounts)
+    
     return minSurpriseModel
 
 # Helper Function for Algorithm 10
