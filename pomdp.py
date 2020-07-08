@@ -580,3 +580,57 @@ def calculateError(env, modelTransitionProbs, T, gammas):
 
     return error / T
 
+# calculates the absolute error. Error=1 when incorrect SDEs or # of SDEs, otherwise it's the average difference of each transition / 2
+# note: it is assummed that env.Node_Set contains a minimum representation of the true environment nodes
+def calculateAbsoluteError(env, modelTransitionProbs):
+    num_of_env_states = len(env.Node_Set)
+    if num_of_env_states != len(env.SDE_Set):
+        return 1
+
+    envTransitionProbs = env.get_true_transition_probs()
+    # Generate P(o|m) matrix for environment
+    Obs_Probs_env = env.get_observation_probs()
+
+    # check that each SDE corresponds to one environment state
+    SDEToNode = []
+    for SDE in env.SDE_Set:
+        probabilities = np.zeros(len(env.Node_Set))
+        for env_state_num in range(len(env.Node_Set)):
+            Belief_State = np.zeros(len(env.Node_Set))
+            Belief_State[env_state_num] = 1
+            first_obs_index = env.O_S.index(SDE[0])
+            Belief_State = np.multiply(Obs_Probs_env[first_obs_index,:], Belief_State)
+
+            Transition_Idx = 0
+            while Transition_Idx < len(SDE)//2:
+
+                Observation = SDE[Transition_Idx*2+2]
+                Observation_Idx = env.O_S.index(Observation)
+                Action = SDE[Transition_Idx*2+1]
+                Action_Idx = env.A_S.index(Action)
+                
+                Belief_State = np.dot(Belief_State, envTransitionProbs[Action_Idx,:,:])
+                Belief_State = np.multiply(Obs_Probs_env[Observation_Idx,:], Belief_State)
+
+                Transition_Idx = Transition_Idx + 1
+
+            probabilities[env_state_num] = np.sum(Belief_State)
+
+        SDEToNode.append(probabilities.argmax())
+
+    if len(SDEToNode) != len(set(SDEToNode)):
+        return 1
+
+    # SDEs are valid, so now calculate the absolute difference per transition / 2
+    SDEToNode = np.array(SDEToNode)
+    # import pdb; pdb.set_trace()
+    error = 0
+    for a_idx in range(len(env.A_S)):
+        permutatedModelTrans = modelTransitionProbs[a_idx, SDEToNode]
+        # we divide by two so that way each transition diff is normalized to be between 0 and 1
+        abs_difference = np.absolute(permutatedModelTrans - envTransitionProbs[a_idx,:,:]) / 2
+        error = error + np.sum(np.sum(np.sum(abs_difference)))
+        # import pdb; pdb.set_trace()
+
+    error = error / (len(env.A_S) * num_of_env_states)
+    return error

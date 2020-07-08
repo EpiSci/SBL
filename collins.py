@@ -156,8 +156,10 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
                     if writeToFile:
                         modelTransitionProbs = calcTransitionProbabilities(model)
                         iterError = pomdp.calculateError(model.env, modelTransitionProbs, 10000, model.TCounts)
+                        iterAbsError = pomdp.calculateAbsoluteError(model.env, modelTransitionProbs)
                         c.writerow(["Iteration: ", i])
                         c.writerow(["Error:", iterError])
+                        c.writerow(["Absolute Error:", iterAbsError])
                         c.writerow(["Transition Probabilities"])
                         test.writeNumpyMatrixToCSV(c, modelTransitionProbs)
                     break
@@ -172,8 +174,10 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
                     c.writerow(env.SDE_Set)
                 modelTransitionProbs = calcTransitionProbabilities(model)
                 iterError = pomdp.calculateError(model.env, modelTransitionProbs, 10000, model.TCounts)
+                iterAbsError = pomdp.calculateAbsoluteError(model.env, modelTransitionProbs)
                 c.writerow(["Iteration: ", i])
                 c.writerow(["Error:", iterError])
+                c.writerow(["Absolute Error:", iterAbsError])
                 c.writerow(["Transition Probabilities"])
                 test.writeNumpyMatrixToCSV(c, modelTransitionProbs)
                 c.writerow(["Transition Gammas"])
