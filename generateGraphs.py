@@ -12,7 +12,7 @@ def generateGraphTest1(useFirstPoint):
     v2Data = []
     model_splits = []
     
-    for versionNum in range(1, 1+3):
+    for versionNum in [1,3]:
         files = glob.glob("./Testing Data/Test1_v" + str(versionNum) + "/*.csv")
         if len(files) == 0:
             continue
@@ -25,6 +25,19 @@ def generateGraphTest1(useFirstPoint):
         else:
             data = v2Data
         for filename in files:
+            # find the returned model num
+            finalModelNum = -1
+            with open(filename, mode='r') as csv_file:
+                csv_reader = csv.DictReader(csv_file)
+                foundFinal = False
+                for row in csv_reader:
+                    if row['0'] == '*':
+                        foundFinal = True
+                        continue
+                    if foundFinal is True and finalModelNum == -1:
+                        temp = row['0']
+                        finalModelNum = int(temp[len('Model Num '):])
+
             with open(filename, mode='r') as csv_file:
                 csv_reader = csv.DictReader(csv_file)
                 iteration_num = 0
@@ -32,7 +45,11 @@ def generateGraphTest1(useFirstPoint):
                 offset_amount = 0
                 trialData = []
                 for row in csv_reader:
-                    if row['0'] == 'Model Num ' + str(model_num+1):
+                    if model_num > finalModelNum:
+                        break
+                    if row['0'] == '*':
+                        break
+                    elif row['0'] == 'Model Num ' + str(model_num+1):
                         if iteration_num + offset_amount not in model_splits:
                             model_splits.append(iteration_num + offset_amount)
                         model_num = model_num + 1
@@ -286,5 +303,5 @@ def generateGraphTest3(useFirstPoint):
 
 if __name__ == "__main__":
     
-    generateGraphTest2()
+    generateGraphTest1(False)
     # generateGraphRelativeError()

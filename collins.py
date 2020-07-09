@@ -224,7 +224,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
     c.writerow("***********")
     c.writerow(["Model Num " + str(minSurpriseModelNum)])
     c.writerow(["Model States: "])
-    c.writerow(env.SDE_Set)
+    c.writerow(minSurpriseModelNum.env.SDE_Set)
     modelTransitionProbs = calcTransitionProbabilities(minSurpriseModel)
     iterError = pomdp.calculateError(minSurpriseModel.env, modelTransitionProbs, 10000, minSurpriseModel.TCounts)
     c.writerow(["Iteration: ", i])
