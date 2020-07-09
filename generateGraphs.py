@@ -92,21 +92,39 @@ def generateGraphTest2():
     for env_num in environments:
         v1Data = []
         v2Data = []
+        v3Data = []
         model_splits = []
-        for versionNum in range(1, 3):
+        for versionNum in range(1, 4):
             files = glob.glob("./Testing Data/Test2_v" + str(versionNum) + "/Test" + str(2) + "_v" + str(versionNum) + "_env" + str(env_num) + "*.csv")
             data = []
             if versionNum == 1:
                 data = v1Data
-            else:
+            elif versionNum == 2:
                 data = v2Data
+            else:
+                data = v3Data
             for filename in files:
+                # find the returned model num
+                finalModelNum = -1
                 with open(filename, mode='r') as csv_file:
                     csv_reader = csv.DictReader(csv_file)
+                    foundFinal = False
+                    for row in csv_reader:
+                        if row['0'] == '*':
+                            foundFinal = True
+                            continue
+                        if foundFinal is True and finalModelNum == -1:
+                            temp = row['0']
+                            finalModelNum = int(temp[len('Model Num '):])
+                
+                with open(filename, mode='r') as csv_file:
                     iteration_num = 0
                     model_num = 0
                     offset_amount = 0
+                    csv_reader = csv.DictReader(csv_file)
                     for row in csv_reader:
+                        if model_num > finalModelNum:
+                            continue
                         if row['0'] == 'Model Num ' + str(model_num+1):
                             model_splits.append(iteration_num + offset_amount)
                             data.append([model_num, iteration_num])
@@ -114,19 +132,23 @@ def generateGraphTest2():
                             offset_amount = offset_amount + iteration_num + 1  # add the number of iterations from the last model + 1 (since we start counting at zero)
                         elif row['0'] == 'Iteration: ':
                             iteration_num = float(row['1'])
-                    data.append([model_num, iteration_num])
+                    if model_num == finalModelNum:
+                        data.append([model_num, iteration_num])
 
         v1Data = np.array(v1Data)
         v2Data = np.array(v2Data)
+        v3Data = np.array(v3Data)
         v1Data_average = np.mean(v1Data, axis=0)
         v2Data_average = np.mean(v2Data, axis=0)
+        v3Data_average = np.mean(v3Data, axis=0)
         v1Data_stdDev = np.std(v1Data, axis=0)
         v2Data_stdDev = np.std(v2Data, axis=0)
+        v3Data_stdDev = np.std(v3Data, axis=0)
 
-
-        xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
-        yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
-        groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "W/out Control")), np.full(np.shape(v2Data[:,0]), "W/ Control")))
+        import pdb; pdb.set_trace()
+        xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
+        yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
+        groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "W/out Control")), np.full(np.shape(v2Data[:,0]), "W/ Control")))
         
         plt.figure(figure_num)
         figure_num = figure_num + 1

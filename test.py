@@ -65,8 +65,8 @@ def test1_v3(filename,env):
 def test2_v1(filename,env):
     haveControl = False
     confidenceFactor = 250
-    gainThresh = 0.0275 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
-    numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    numActionsPerExperiment = 75000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
@@ -78,14 +78,28 @@ def test2_v1(filename,env):
 def test2_v2(filename,env):
     haveControl = True
     confidenceFactor = 250
-    gainThresh = 0.0275 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
-    numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    numActionsPerExperiment = 75000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
     useBudd = True
     revisedSplitting = False
     collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+
+#Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
+def test2_v3(filename,env):
+    useBudd = False
+    haveControl = False
+    confidenceFactor = 250
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    numActionsPerExperiment = 75000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
+    insertRandActions = False
+    explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
+    patience = 0
+    revisedSplitting = False
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with Collins' method of SDE splitting
 def test3_v1(filename,env):
@@ -116,9 +130,9 @@ def test3_v3(filename,env):
     
 if __name__ == "__main__":
     testNum = 2
-    versionNum = 2
+    versionNum = 1
     envNum = 2
-    numSubTests = 5
+    numSubTests = 10
     testString = "test"+str(testNum)+"_v"+str(versionNum)
     envString = "Example"+str(envNum)
 
