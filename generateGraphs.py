@@ -124,7 +124,7 @@ def generateGraphTest2():
                     csv_reader = csv.DictReader(csv_file)
                     for row in csv_reader:
                         if model_num > finalModelNum:
-                            continue
+                            break
                         if row['0'] == 'Model Num ' + str(model_num+1):
                             model_splits.append(iteration_num + offset_amount)
                             data.append([model_num, iteration_num])
@@ -145,10 +145,9 @@ def generateGraphTest2():
         v2Data_stdDev = np.std(v2Data, axis=0)
         v3Data_stdDev = np.std(v3Data, axis=0)
 
-        import pdb; pdb.set_trace()
         xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
         yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
-        groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "W/out Control")), np.full(np.shape(v2Data[:,0]), "W/ Control")))
+        groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "BUDD W/out Control")), np.full(np.shape(v2Data[:,0]), "BUDD W/ Control")))
         
         plt.figure(figure_num)
         figure_num = figure_num + 1
