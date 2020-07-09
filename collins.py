@@ -205,7 +205,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         print("Surprise:")
         print(newSurprise)
         if newSurprise < minSurprise:
-            minSurpriseModelNum = 1
+            minSurpriseModelNum = modelNum
             minSurprise = newSurprise
             minSurpriseModel = copy.deepcopy(model)
             splitsSinceMin = 0
