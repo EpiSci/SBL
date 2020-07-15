@@ -109,6 +109,7 @@ class Example1(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
 
+
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
 class Example2(sPOMDPModelExample):
     def __init__(self):
@@ -621,16 +622,20 @@ def calculateAbsoluteError(env, modelTransitionProbs):
     if len(SDEToNode) != len(set(SDEToNode)):
         return 1
 
+
+
     # SDEs are valid, so now calculate the absolute difference per transition / 2
     SDEToNode = np.array(SDEToNode)
-    # import pdb; pdb.set_trace()
     error = 0
     for a_idx in range(len(env.A_S)):
-        permutatedModelTrans = modelTransitionProbs[a_idx, SDEToNode]
+        permutatedEnvTrans = envTransitionProbs[a_idx, SDEToNode]
+        permutatedEnvTrans = permutatedEnvTrans[:, SDEToNode]
+
         # we divide by two so that way each transition diff is normalized to be between 0 and 1
-        abs_difference = np.absolute(permutatedModelTrans - envTransitionProbs[a_idx,:,:]) / 2
+        abs_difference = np.absolute(permutatedEnvTrans - modelTransitionProbs[a_idx,:,:]) / 2
         error = error + np.sum(np.sum(np.sum(abs_difference)))
         # import pdb; pdb.set_trace()
 
     error = error / (len(env.A_S) * num_of_env_states)
     return error
+
