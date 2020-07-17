@@ -102,7 +102,7 @@ class CollinsModel():
         
 
 # Algorithm 10: PSBL Learning of SPOMDP Models
-def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd, revisedSplitting, haveControl, confidence_factor):
+def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd, revisedSplitting, haveControl, confidence_factor, localization_threshold):
 
     prevOb = env.reset()
     model = CollinsModel(env,prevOb,minGain)
@@ -147,7 +147,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
 
             if confidence_factor is not None:
                 # if we have performed all experiments or there is no place that we can reliably get to do perform an experiment then terminate
-                if ((np.min(np.sum(model.TCounts, axis=2)) / len(model.env.SDE_Set)) >= confidence_factor) or (haveControl is True and len(getReachableExperimentStates(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor)) == 0 and np.max(computeGains(model)) > model.minGain):
+                if ((np.min(np.sum(model.TCounts, axis=2)) / len(model.env.SDE_Set)) >= confidence_factor) or (haveControl is True and len(getReachableExperimentStates(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor, localization_threshold)) == 0 and np.max(computeGains(model)) > model.minGain):
                     print("Finished early on iteration number " + str(i))
                     if((np.min(np.sum(model.TCounts, axis=2)) / len(model.env.SDE_Set)) >= confidence_factor):
                         print("Performed all necessary experiments")
@@ -186,7 +186,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
                 
             if not policy:
                 # Add actions of an SDE to the policy or random actions. This will also add a random action between SDEs if insertRandActions is enabled
-                (policy, performed_experiment) = updatePolicy(model, explore, prevOb, insertRandActions, haveControl, confidence_factor, performed_experiment)
+                (policy, performed_experiment) = updatePolicy(model, explore, prevOb, insertRandActions, haveControl, confidence_factor, performed_experiment, localization_threshold)
                 if genTraj:
                     for (actionIdx,action) in enumerate(policy):
                         if actionIdx + i < numActions:
@@ -239,13 +239,13 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
     return minSurpriseModel
 
 # Helper Function for Algorithm 10
-def updatePolicy(model,explore,prevObservation,insertRandActions, haveControl, confidence_factor, performed_experiment):
+def updatePolicy(model,explore,prevObservation,insertRandActions, haveControl, confidence_factor, performed_experiment, localization_threshold):
 
     if haveControl is True:
-        if len(getReachableExperimentStates(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor)) > 0:
-            return haveControlPolicy(model, prevObservation, confidence_factor, performed_experiment)
+        if len(getReachableExperimentStates(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor, localization_threshold)) > 0:
+            return haveControlPolicy(model, prevObservation, confidence_factor, performed_experiment, localization_threshold)
         else:
-            (temp, _) = updatePolicy(model, explore, prevObservation, insertRandActions, False, confidence_factor, performed_experiment)
+            (temp, _) = updatePolicy(model, explore, prevObservation, insertRandActions, False, confidence_factor, performed_experiment, localization_threshold)
             return (temp, performed_experiment)
 
     random_sample = np.random.random()
@@ -590,7 +590,7 @@ def calcTransitionProbabilities(model):
     return(transProbs)
 
 
-def haveControlPolicy(model, prevObservation, confidence_factor, performed_experiment):
+def haveControlPolicy(model, prevObservation, confidence_factor, performed_experiment, localization_threshold):
     np.seterr(all='warn')
     import warnings
     warnings.filterwarnings('error')
@@ -609,7 +609,7 @@ def haveControlPolicy(model, prevObservation, confidence_factor, performed_exper
         # print(prevObservation)
         nonzero_values = np.count_nonzero(model.beliefState)
         # TODO: get rid of hardcoded value for the entropy
-        if performed_experiment is True or (nonzero_values > 1 and entropy(model.beliefState, base=nonzero_values) > 0.75):
+        if performed_experiment is True or (nonzero_values > 1 and entropy(model.beliefState, base=nonzero_values) > localization_threshold):
             # print("localizing")
             Matching_SDE = model.env.get_SDE(prevObservation)
             Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
@@ -647,7 +647,7 @@ def haveControlPolicy(model, prevObservation, confidence_factor, performed_exper
             # if not in a state of interest, try to go to a state of interest
             if performed_experiment is False:
 
-                reachable_states_of_interest = getReachableExperimentStates(model, transitionProbs, current_state, confidence_factor)
+                reachable_states_of_interest = getReachableExperimentStates(model, transitionProbs, current_state, confidence_factor, localization_threshold)
                 state_of_interest = reachable_states_of_interest[0]
                 # TODO: Consider optimizing the chosen state based upon proximity
                 # if no such states exist, then quit. Would probably get rid of random action part, but may do some random actions for a bit
@@ -711,7 +711,7 @@ def getGraph(model, transitionProbs):
     return G
 
 # returns the states that we need to do experiments from, and that we can get to reliably
-def getReachableExperimentStates(model, transitionProbs, current_state, confidence_factor):
+def getReachableExperimentStates(model, transitionProbs, current_state, confidence_factor, localization_threshold):
 
         confidences = np.sum(model.TCounts, axis=2) / len(model.env.SDE_Set)
 
@@ -728,7 +728,7 @@ def getReachableExperimentStates(model, transitionProbs, current_state, confiden
                     # if there's only one max and it's by a decent amount, set that to 1
                     # if nonzero_values > 1:
                     #     print(entropy(row, base=nonzero_values))
-                    if nonzero_values == 1 or (nonzero_values > 1 and entropy(row, base=nonzero_values) < 0.75):
+                    if nonzero_values == 1 or (nonzero_values > 1 and entropy(row, base=nonzero_values) < localization_threshold):
                         if np.count_nonzero(row == np.amax(row)) == 1:
                             confidentTransitions[action_idx, m_idx, :] = np.where(row[:] == np.amax(row), np.ones((1, len(model.env.get_SDE()))), np.zeros((1, len(model.env.get_SDE()))))
                             # print("Should've incremented")

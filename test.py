@@ -36,7 +36,8 @@ def test1_v1(filename,env):
     revisedSplitting = False
     haveControl = False
     confidenceFactor = None
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+    localization_threshold = 0.75
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
 def test1_v2(filename,env):
@@ -59,7 +60,8 @@ def test1_v3(filename,env):
     revisedSplitting = False
     haveControl = False
     confidenceFactor = None
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+    localization_threshold = 0.75
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1(filename,env):
@@ -72,7 +74,8 @@ def test2_v1(filename,env):
     patience = 0
     useBudd = True
     revisedSplitting = False
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+    localization_threshold = 0.75
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v2(filename,env):
@@ -85,7 +88,8 @@ def test2_v2(filename,env):
     patience = 0
     useBudd = True
     revisedSplitting = False
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+    localization_threshold = 0.75
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v3(filename,env):
@@ -98,7 +102,8 @@ def test2_v3(filename,env):
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
     revisedSplitting = False
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+    localization_threshold = 0.75
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with Collins' method of SDE splitting
@@ -112,7 +117,8 @@ def test3_v1(filename,env):
     revisedSplitting = False
     haveControl = False
     confidenceFactor = None
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+    localization_threshold = 0.75
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with improved SDE splitting
@@ -126,11 +132,12 @@ def test3_v3(filename,env):
     revisedSplitting = True
     haveControl = False
     confidenceFactor = None
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor)
+    localization_threshold = 0.75
+    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
     
 if __name__ == "__main__":
-    testNum = 1
-    versionNum = 3
+    testNum = 2
+    versionNum = 2
     envNum = 2
     numSubTests = 10
     testString = "test"+str(testNum)+"_v"+str(versionNum)
