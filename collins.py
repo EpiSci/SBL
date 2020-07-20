@@ -227,7 +227,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
     c.writerow(minSurpriseModel.env.SDE_Set)
     modelTransitionProbs = calcTransitionProbabilities(minSurpriseModel)
     iterError = pomdp.calculateError(minSurpriseModel.env, modelTransitionProbs, 10000, minSurpriseModel.TCounts)
-    iterAbsError = pomdp.calculateAbsoluteError(model.env, modelTransitionProbs)
+    iterAbsError = pomdp.calculateAbsoluteError(minSurpriseModel.env, modelTransitionProbs)
     c.writerow(["Iteration: ", i])
     c.writerow(["Error:", iterError])
     c.writerow(["Absolute Error:", iterAbsError])
