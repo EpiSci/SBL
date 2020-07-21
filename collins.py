@@ -465,13 +465,27 @@ def trySplit(model, revisedSplitting):
     # Generate the list G that is used to order the model splitting
     mTrajLengths = [len(sde) for sde in model.env.SDE_Set]
     sortedIndexes = sorted(range(len(mTrajLengths)),key=mTrajLengths.__getitem__)
-    for m in sortedIndexes:
-        # Sort the actions in decreasing order with respect to the associated gain
-        gainsPerAction = [G_ma[a][m] for a in range(len(model.env.A_S))]
-        gainsPerAction = gainsPerAction[::-1] #inverse the list since the previous line sorts from smallest to largest and we want the largest gain first
-        sortedActions = sorted(range(len(model.env.A_S)),key=gainsPerAction.__getitem__)
-        for a in range(len(model.env.A_S)):
-            G.append(((model.env.SDE_Set[m],model.env.A_S[sortedActions[a]]),G_ma[sortedActions[a]][m]))
+    for length in set(mTrajLengths):
+        # firstIndexOfLength = sortedIndexes.index(length)
+        # lastIndexOfLength = sortedIndexes[::-1].index(length) # Returns the index of the last model state m that has this length of trajectory
+        tripletStorage = []
+        gainStorage = []
+        for m in [i for i in sortedIndexes if mTrajLengths[i] == length]:
+            # Get all of the relevant gains
+            for a in range(len(model.env.A_S)):
+                tripletStorage.append(((model.env.SDE_Set[m],model.env.A_S[a]),G_ma[a][m]))
+                gainStorage.append(G_ma[a][m])
+        sortedGainIndexes = sorted(range(len(gainStorage)),key=gainStorage.__getitem__)
+        for index in sortedGainIndexes[::-1]: # Note: using the reverse of the list since sorted goes in ascending order of the gains
+            G.append(tripletStorage[index])
+        
+    # for m in sortedIndexes:
+    #     # Sort the actions in decreasing order with respect to the associated gain
+    #     gainsPerAction = [G_ma[a][m] for a in range(len(model.env.A_S))]
+    #     gainsPerAction = gainsPerAction[::-1] #inverse the list since the previous line sorts from smallest to largest and we want the largest gain first
+    #     sortedActions = sorted(range(len(model.env.A_S)),key=gainsPerAction.__getitem__)
+    #     for a in range(len(model.env.A_S)):
+    #         G.append(((model.env.SDE_Set[m],model.env.A_S[sortedActions[a]]),G_ma[sortedActions[a]][m]))
 
     print("G")
     print(G)
