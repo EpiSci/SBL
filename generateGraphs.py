@@ -3,7 +3,12 @@ import glob
 import numpy as np
 import re
 from matplotlib import pyplot as plt
+import matplotlib.image as mpimg
 import seaborn as sns
+from subprocess import check_call
+from tempfile import NamedTemporaryFile
+from pomdp import *
+import codecs
 
 
 def generateGraphTest1(useFirstPoint,genAbsoluteError):
@@ -329,7 +334,113 @@ def generateGraphTest3(useFirstPoint):
 
     plt.show()
 
+
+def getModelGraph(env_num, SDE_Set, A_S, transitionProbs, filename):
+        """
+        Write graph to a temporary file and invoke `dot`.
+
+        The output file type is automatically detected from the file suffix.
+
+        *`graphviz` needs to be installed, before usage of this method.*
+        """
+        lines = []
+        lines.append("digraph tree {")
+        # add the nodes
+        for sde_idx in range(len(SDE_Set)):
+            sde = SDE_Set[sde_idx]
+            line = '    "' + str(sde_idx) + '" ['
+            sde_str = "\n("
+            for m_a in sde:
+                if m_a == "square":
+                    sde_str = sde_str + "&#9633;,"
+                elif m_a == "diamond":
+                    sde_str = sde_str + "&#9674;,"
+                else:
+                    sde_str = sde_str + m_a + ","
+            sde_str = sde_str[:-1] + ')'  # -1 to get rid of comma
+            label = str(sde_idx) + sde_str
+            line = line + 'label="' + label + '"'
+            if sde[0] == "square":
+                line = line + ', shape="square"'
+            elif sde[0] == "diamond":
+                line = line + ', shape="diamond", height=1.7'
+            elif sde[0] == "volcano":
+                line = line + ', shape="trapezium"'
+            elif sde[0] == "rose":
+                line = line + ', shape="polygon", sides=7'
+            elif sde[0] == "goal":
+                line = line + ', shape="square"'
+            line = line + ', style=bold'
+            line = line + ', fontname="Times-Bold"'
+            line = line + '];'
+            lines.append(line)
+
+        # do the ranks
+        if env_num == 6:
+            for sde_idx in range(len(SDE_Set)):
+                line = ""
+                if sde_idx == 1: # we'll do this one when sde_idx == 2
+                    continue
+                elif sde_idx == 2:
+                    line = '  { rank=min; "1"; "2"; }'
+                else:
+                    rank = "same"
+                    if sde_idx == 3:
+                        rank = "source"
+                    elif sde_idx == 0:
+                        rank = "sink"
+                    line = '  { rank=' + rank + '; ' + '"' + str(sde_idx) + '"; }'
+                lines.append(line)
+        # elif env_num == 42:
+        #     line = '  { rank=same; "0"; "1"; "2"; "3"; }'
+        #     lines.append(line)
+
+        # add the edges
+        for m_idx in range(len(SDE_Set)):
+            for a_idx in range(len(A_S)):
+                row = transitionProbs[a_idx, m_idx, :]
+                m_p_idx = np.argmax(row)
+                probability = np.max(row)
+                line = '    "' + str(m_idx) + '" -> "' + str(m_p_idx) + '" '
+                line = line + '[label=" ' + A_S[a_idx] + '\n '+ str(probability) + '"'
+                line = line + ', style=bold'
+                line = line + ', fontname="Times-Bold"'
+                # if abs(m_idx - m_p_idx) == 1:
+                #     line = line + ', weight=4'
+                # elif abs(m_idx - m_p_idx) == 3:
+                #     line = line + ', weight=1'
+                # else:
+                #     line = line + ', weight=1'
+                line = line + '];'
+
+                lines.append(line)
+
+        lines.append("}")
+
+        # now write the file
+        # with codecs.open("dotfile.dot", "w", "utf-8") as dotfile:
+        with NamedTemporaryFile("wb", delete=False) as dotfile:
+            dotfilename = dotfile.name
+            for line in lines:
+                # dotfile.write("%s\n" % line)
+                dotfile.write(("%s\n" % line).encode("utf-8"))
+            dotfile.flush()
+            cmd = ["dot", dotfilename, "-T", "png", "-o", filename]
+            # dot dotfile.dot -T png -o temp.png
+            check_call(cmd)
+        try:
+            remove(dotfilename)
+        except Exception:
+            msg = 'Could not remove temporary file %s' % dotfilename
+
+        img=mpimg.imread(filename)
+        imgplot = plt.imshow(img)
+        plt.show()
+
 if __name__ == "__main__":
-    
-    generateGraphTest1(False,False)
+    envNum = 42
+    envString = "Example"+str(envNum)
+    env = locals()[envString]()
+    getModelGraph(envNum, env.SDE_Set, env.A_S, env.get_true_transition_probs(), "env" + str(envNum) + "Graph.png")
+    # generateGraphTest1(False,False)
     # generateGraphRelativeError()
