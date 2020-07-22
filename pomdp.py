@@ -598,13 +598,9 @@ def calculateError(env, modelTransitionProbs, T, gammas):
 
         # Compute error for the current belief states
         weight_vector = weights[env.A_S.index(Action), :]
-        scale = np.dot(Belief_State_mod, weight_vector)
         error_vector = np.dot(Obs_Probs_mod, Belief_State_mod) - np.dot(Obs_Probs_env, Belief_State_env)
         
-        if doRelative is True:
-            error = error + (scale * np.sqrt(error_vector.dot(error_vector)))
-        else:
-            error = error + np.sqrt(error_vector.dot(error_vector))
+        error = error + np.sqrt(error_vector.dot(error_vector))
 
         Belief_State_mod = Belief_State_mod*Belief_Mask_mod
         Belief_State_mod = Belief_State_mod/np.sum(Belief_State_mod)
