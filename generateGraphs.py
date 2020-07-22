@@ -80,17 +80,23 @@ def generateGraphTest1(useFirstPoint,genAbsoluteError):
 
         print("Percent Trials Correct for Version " + str(versionNum) + " : " + str(validCount/totalCount))
     v1Data = np.array(v1Data)
+    if v1Data.size > 0: # Check to make sure at least one trial was successful
+        v1Data_average = np.mean(v1Data, axis=0)
+        v1Data_stdDev = np.std(v1Data, axis=0)
+
     v2Data = np.array(v2Data)
-    v1Data_average = np.mean(v1Data, axis=0)
-    v2Data_average = np.mean(v2Data, axis=0)
-    v1Data_stdDev = np.std(v1Data, axis=0)
-    v2Data_stdDev = np.std(v2Data, axis=0)
+    if v2Data.size > 0: # Check to make sure at least one trial was successful
+        v2Data_average = np.mean(v2Data, axis=0)
+        v2Data_stdDev = np.std(v2Data, axis=0)
     
     # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
-    plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
+    if v1Data.size > 0: # Check to make sure at least one trial was successful
+        print(v1Data_average.size)
+        plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
     
     # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
-    plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
+    if v2Data.size > 0:
+        plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:
@@ -289,18 +295,23 @@ def generateGraphTest3(useFirstPoint):
                 data.append(trialData)
 
     v1Data = np.array(v1Data)
-    v2Data = np.array(v2Data)
-    v1Data_average = np.mean(v1Data, axis=0)
+    if v1Data.size > 0:
+        v1Data_average = np.mean(v1Data, axis=0)
+        v1Data_stdDev = np.std(v1Data, axis=0)
+
     v2Data_average = np.mean(v2Data, axis=0)
-    v1Data_stdDev = np.std(v1Data, axis=0)
-    v2Data_stdDev = np.std(v2Data, axis=0)
+    if v2Data.size > 0:
+        v2Data = np.array(v2Data)
+        v2Data_stdDev = np.std(v2Data, axis=0)
 
     
     # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
     # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
-    plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
-    
-    plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
+    if v1Data.size > 0:
+        plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
+
+    if v2Data.size > 0:
+        plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:

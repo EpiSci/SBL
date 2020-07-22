@@ -1,0 +1,13 @@
+Test 1 Data:
+
+Environment 2: (7/20 data)
+Percent Trials Correct for Version 1 : 1.0
+Percent Trials Correct for Version 3 : 1.0
+
+Environment 3: (7/20 data)
+Percent Trials Correct for Version 1 : 1.0
+Percent Trials Correct for Version 3 : 1.0
+
+Environment 4: (7/20 data)
+Percent Trials Correct for Version 1 : 0.0
+Percent Trials Correct for Version 3 : 0.1
