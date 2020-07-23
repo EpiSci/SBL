@@ -182,18 +182,28 @@ def generateGraphTest2():
 
         v1Data = np.array(v1Data)
         v2Data = np.array(v2Data)
-        v3Data = np.array(v3Data)
         v1Data_average = np.mean(v1Data, axis=0)
         v2Data_average = np.mean(v2Data, axis=0)
-        v3Data_average = np.mean(v3Data, axis=0)
         v1Data_stdDev = np.std(v1Data, axis=0)
         v2Data_stdDev = np.std(v2Data, axis=0)
-        v3Data_stdDev = np.std(v3Data, axis=0)
 
-        xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
-        yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
-        groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "BUDD W/out Control")), np.full(np.shape(v2Data[:,0]), "BUDD W/ Control")))
-        
+        xData = []
+        yData = []
+        groupings = []
+
+        if len(v3Data) > 0:
+            v3Data = np.array(v3Data)
+            v3Data_average = np.mean(v3Data, axis=0)
+            v3Data_stdDev = np.std(v3Data, axis=0)
+            xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
+            yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
+            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "BUDD W/out Control")), np.full(np.shape(v2Data[:,0]), "BUDD W/ Control")))
+        else:
+            xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
+            yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
+            groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "W/out Control")), np.full(np.shape(v2Data[:,0]), "W/ Control")))
+
+
         plt.figure(figure_num)
         figure_num = figure_num + 1
         sns.barplot(x=xData, y=yData, hue=groupings, capsize=0.1) 
