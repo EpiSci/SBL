@@ -699,14 +699,15 @@ def getPathToExperiment(model, transitionProbs, current_state, confidence_factor
         #     import pdb; pdb.set_trace()
         added_nodes = []
         for node in prev_lvl_nodes:
+
+            # that means we already performed experiment
+            if node.reward != 0:
+                continue
+
             m_idx = int(node.name)
             for action_idx in range(len(model.env.A_S)):
                 a = model.env.A_S[action_idx]
                 row = transitionProbs[action_idx, m_idx, :]
-
-                # that means we already performed experiment
-                if node.reward != 0:
-                    continue
 
                 new_actions = node.actions.copy()
                 new_actions.append(a)
