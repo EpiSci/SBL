@@ -628,9 +628,5 @@ if __name__ == "__main__":
     # getModelGraph(envNum, env.SDE_Set, env.A_S, env.get_true_transition_probs(), "env" + str(envNum) + "Graph.png")
     generateGraphTest1(False,False)
     # generateGraphTest2_2(False,False, 2)
-<<<<<<< HEAD
     generateGraphTest2()
     # getPercentAccurate(22)
-=======
-    # generateGraphTest2()
->>>>>>> bf59d26da8287dfc40ef9436e92708233bd45825
