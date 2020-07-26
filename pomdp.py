@@ -163,6 +163,36 @@ class Example3(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 0, "b": 1, "t": 3})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 1, "b": 0, "t": 2})) #state 3
 
+
+#This class extends the generic sPOMDP model. This model is the from the environment from Figure 3, but only with 3 known SDEs (rose, volcano, or nothing)
+class Example32(sPOMDPModelExample):
+    def __init__(self):
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = ["rose", "volcano","nothing"] #Observation Set
+        self.A_S = ["b", "f", "t"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+        self.SDE_Set.append([self.O_S[2], self.A_S[0], self.O_S[1]])
+        self.SDE_Set.append([self.O_S[2], self.A_S[0], self.O_S[0]])
+
+        #Generate States
+        self.Node_Set.append(sPOMDPNode(Observation = "rose", Action_Dictionary = {"f": 3, "b": 2, "t": 0})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "volcano", Action_Dictionary = {"f": 2, "b": 3, "t": 1})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 0, "b": 1, "t": 3})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 1, "b": 0, "t": 2})) #state 3
+
+
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 4, but only with 2 known SDEs (goal, nothing)
 class Example4(sPOMDPModelExample):
     def __init__(self):
@@ -188,6 +218,35 @@ class Example4(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 2, "west": 0})) #state left
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 3, "west": 1})) #state middle
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 0, "west": 2})) #state right
+
+class Example42(sPOMDPModelExample):
+    def __init__(self):
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = ["goal","nothing"] #Observation Set
+        self.A_S = ["east", "west"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.99
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1], self.A_S[0], self.O_S[1]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1], self.A_S[0], self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
+
+
+        #Generate States
+        self.Node_Set.append(sPOMDPNode(Observation = "goal", Action_Dictionary = {"east": 1, "west": 3})) #state goal
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 2, "west": 0})) #state left
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 3, "west": 1})) #state middle
+        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 0, "west": 2})) #state right
+
 
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 5, 
 #but only with 5 known starting SDEs (nothing, LRVForward, MRVForward, LRVDocked, MRVDocked)
@@ -539,13 +598,9 @@ def calculateError(env, modelTransitionProbs, T, gammas):
 
         # Compute error for the current belief states
         weight_vector = weights[env.A_S.index(Action), :]
-        scale = np.dot(Belief_State_mod, weight_vector)
         error_vector = np.dot(Obs_Probs_mod, Belief_State_mod) - np.dot(Obs_Probs_env, Belief_State_env)
         
-        if doRelative is True:
-            error = error + (scale * np.sqrt(error_vector.dot(error_vector)))
-        else:
-            error = error + np.sqrt(error_vector.dot(error_vector))
+        error = error + np.sqrt(error_vector.dot(error_vector))
 
         Belief_State_mod = Belief_State_mod*Belief_Mask_mod
         Belief_State_mod = Belief_State_mod/np.sum(Belief_State_mod)

@@ -7,6 +7,11 @@ import git
 import pomdp
 import test
 import networkx as nx
+from anytree import Node, LevelOrderGroupIter
+from anytree.exporter import UniqueDotExporter
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+from subprocess import check_call
 
 
 # Helper class to be used with the trie in the model
@@ -147,7 +152,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
 
             if confidence_factor is not None:
                 # if we have performed all experiments or there is no place that we can reliably get to do perform an experiment then terminate
-                if ((np.min(np.sum(model.TCounts, axis=2)) / len(model.env.SDE_Set)) >= confidence_factor) or (haveControl is True and len(getReachableExperimentStates(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor, localization_threshold)) == 0 and np.max(computeGains(model)) > model.minGain):
+                if ((np.min(np.sum(model.TCounts, axis=2)) / len(model.env.SDE_Set)) >= confidence_factor) or (haveControl is True and getPathToExperiment(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor, localization_threshold) is None and np.max(computeGains(model)) > model.minGain):
                     print("Finished early on iteration number " + str(i))
                     if((np.min(np.sum(model.TCounts, axis=2)) / len(model.env.SDE_Set)) >= confidence_factor):
                         print("Performed all necessary experiments")
@@ -242,7 +247,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
 def updatePolicy(model,explore,prevObservation,insertRandActions, haveControl, confidence_factor, performed_experiment, localization_threshold):
 
     if haveControl is True:
-        if len(getReachableExperimentStates(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor, localization_threshold)) > 0:
+        if getPathToExperiment(model, calcTransitionProbabilities(model), np.argmax(model.beliefState), confidence_factor, localization_threshold) is not None:
             return haveControlPolicy(model, prevObservation, confidence_factor, performed_experiment, localization_threshold)
         else:
             (temp, _) = updatePolicy(model, explore, prevObservation, insertRandActions, False, confidence_factor, performed_experiment, localization_threshold)
@@ -609,177 +614,189 @@ def haveControlPolicy(model, prevObservation, confidence_factor, performed_exper
     import warnings
     warnings.filterwarnings('error')
 
-    try:
+    # print(len(Informed_Transition))
+    # print(Transition_Idx)
+    #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
 
-        # print(len(Informed_Transition))
-        # print(Transition_Idx)
-        #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
+    new_Full_Transition = []
+    transitionProbs = calcTransitionProbabilities(model)
 
-        new_Full_Transition = []
-        transitionProbs = calcTransitionProbabilities(model)
+    # perform localization if unsure of where we are
+    # Current_Observation = prevObservation
+    # print(prevObservation)
+    nonzero_values = np.count_nonzero(model.beliefState)
+    # TODO: get rid of hardcoded value for the entropy
+    if performed_experiment is True or (nonzero_values > 1 and entropy(model.beliefState, base=nonzero_values) > localization_threshold):
+        # print("localizing")
+        Matching_SDE = model.env.get_SDE(prevObservation)
+        Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
+        Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
+        for action in Chosen_SDE_Actions:
+            # Current_Observation = model.env.step(action)
+            new_Full_Transition.append(action)
+            # new_Full_Transition.append(Current_Observation)
 
-        # perform localization if unsure of where we are
-        # Current_Observation = prevObservation
-        # print(prevObservation)
-        nonzero_values = np.count_nonzero(model.beliefState)
-        # TODO: get rid of hardcoded value for the entropy
-        if performed_experiment is True or (nonzero_values > 1 and entropy(model.beliefState, base=nonzero_values) > localization_threshold):
-            # print("localizing")
-            Matching_SDE = model.env.get_SDE(prevObservation)
-            Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
-            Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
-            for action in Chosen_SDE_Actions:
+        if performed_experiment is True:
+            # now need to get ourselves to a random state (in case there's latent states)
+            # choose a random number of actions that could get us to any of our model states
+            rand_actions = random.choices(model.env.A_S, k=max(1,len(model.env.SDE_Set) - 1))
+            for action in rand_actions:
+                new_Full_Transition.append(action)
+            performed_experiment = False
+            # print("performing random actions")
+
+
+    else:  # try to perform experiments so that we learn what we don't know
+
+        # perform experiment if we're in a place where we can
+        current_state = np.argmax(model.beliefState)
+        for action_idx in range(len(model.env.A_S)):
+
+            if np.sum(model.TCounts[action_idx, current_state])  / len(model.env.SDE_Set) < confidence_factor:
+                action = model.env.A_S[action_idx]
                 # Current_Observation = model.env.step(action)
                 new_Full_Transition.append(action)
                 # new_Full_Transition.append(Current_Observation)
+                performed_experiment = True
+                # print("experiment performed: took action " + str(action) + " from state " + str(current_state))
+                break
 
-            if performed_experiment is True:
-                # now need to get ourselves to a random state (in case there's latent states)
-                # choose a random number of actions that could get us to any of our model states
-                rand_actions = random.choices(model.env.A_S, k=max(1,len(model.env.SDE_Set) - 1))
-                for action in rand_actions:
-                    new_Full_Transition.append(action)
-                performed_experiment = False
-                # print("performing random actions")
+        # if not in a state of interest, try to go to a state of interest
+        if performed_experiment is False:
+            path = getPathToExperiment(model, transitionProbs, current_state, confidence_factor, localization_threshold)
+            if len(path) == 0:
+                print("Error: We're already at an experiment state")
+                return (new_Full_Transition, performed_experiment)
+            else:
+                new_Full_Transition.append(path[0])
+
+    return (new_Full_Transition, performed_experiment)
 
 
-        else: # try to perform experiments so that we learn what we don't know
-
-            # perform experiment if we're in a place where we can
-            current_state = np.argmax(model.beliefState)
-            for action_idx in range(len(model.env.A_S)):
-
-                if np.sum(model.TCounts[action_idx, current_state])  / len(model.env.SDE_Set) < confidence_factor:
-                    action = model.env.A_S[action_idx]
-                    # Current_Observation = model.env.step(action)
-                    new_Full_Transition.append(action)
-                    # new_Full_Transition.append(Current_Observation)
-                    performed_experiment = True
-                    # print("experiment performed: took action " + str(action) + " from state " + str(current_state))
-                    break
-
-            # if not in a state of interest, try to go to a state of interest
-            if performed_experiment is False:
-
-                reachable_states_of_interest = getReachableExperimentStates(model, transitionProbs, current_state, confidence_factor, localization_threshold)
-                state_of_interest = reachable_states_of_interest[0]
-                # TODO: Consider optimizing the chosen state based upon proximity
-                # if no such states exist, then quit. Would probably get rid of random action part, but may do some random actions for a bit
-                G = getGraph(model, transitionProbs)
-                shortest_path = nx.dijkstra_path(G, current_state, state_of_interest, weight='weight')
-
-                # print("shortest_path")
-                # print(shortest_path)
-                # print("shortest path length")
-                # print(nx.dijkstra_path_length(G, current_state, state_of_interest, weight='weight'))
-
-                # check to ee if each m' in the path is the most likely transition for the (m,a) pair 
-                most_likely = True
-                for index in range(len(shortest_path) - 1):
-                    m = shortest_path[index]
-                    m_prime = shortest_path[index+1]
-                    action_idx = np.argmax(transitionProbs[:,m, m_prime], axis=0)
-                    if m_prime != np.argmax(transitionProbs[action_idx,m, :], axis=0):
-                        most_likely = False
-                        break
-
-                if most_likely is True:
-                    # only add one action (in case we have to localize while in path)
-                    # TODO: This may fail when we have latent states as we may never be able to go down path
-                    action_idx = np.argmax(transitionProbs[:,current_state, shortest_path[1]], axis=0)
-                    action = model.env.A_S[action_idx]
-                    # Current_Observation = model.env.step(action)
-                    new_Full_Transition.append(action)
-                    # new_Full_Transition.append(Current_Observation)
-                    # print("Performing action " + str(action_idx) + " from state " + str(current_state) + " to get to state " + str(shortest_path[1]))
-                else:
-                    # no good paths implies latent states exist so just do random actions
-                    # choose a random number of actions that could get us to any of our model states
-                    rand_actions = random.choices(model.env.A_S, k=max(1,len(model.env.SDE_Set) - 1))
-                    for action in rand_actions:
-                        new_Full_Transition.append(action)
-                    # print("no good paths from state " + str(current_state) +  " to get to goal state " + str(state_of_interest) + " so performing random actions")
-
-        # policy = new_Full_Transition[1::2] # Need to pull every other value since both observations and actions are stored in the SDE, but only a policy should be returned
-        # return policy
-        # print(new_Full_Transition)
-        return (new_Full_Transition, performed_experiment)
-    except Warning:
+# returns a path to a state where experimentation needs to be done
+# returns empty list if already at state where experiment can be performed
+# returns None if it has done experimentation for all reliably reachable nodes
+def getPathToExperiment(model, transitionProbs, current_state, confidence_factor, localization_threshold):
+    confidences = np.sum(model.TCounts, axis=2) / len(model.env.SDE_Set)
+    # get the states of interest. Use the 1 index so we get states (as opposed to actions), and use unique so we don't repeat states that need to explore 2 or more actions
+    states_of_interest = np.unique(np.array(np.where(confidences < confidence_factor))[1,:])
+    if states_of_interest.size == 0:
         import pdb; pdb.set_trace()
+        return None
 
+    if current_state in states_of_interest:
+        return []
 
-def getGraph(model, transitionProbs):
+    max_depth = len(model.env.SDE_Set)
+    root = Node(str(current_state), reward=0, probability=1, actions=[])
+    prev_lvl_nodes = [root]
+    depth = 1
+    bestNode = None
+    while depth <= max_depth:
+        # print(depth)
+        # import pdb; pdb.set_trace()
+        # if depth == 2:
+        #     import pdb; pdb.set_trace()
+        added_nodes = []
+        for node in prev_lvl_nodes:
 
-    SDE_List = model.env.get_SDE()
-    G = nx.DiGraph()
-    G.add_nodes_from(range(len(SDE_List)))
-    edges = []
+            # that means we already performed experiment
+            if node.reward != 0:
+                continue
 
-    max_probs = np.max(transitionProbs, axis=0)
-
-    for start in range(len(SDE_List)):
-        for des in range(len(SDE_List)):
-            if max_probs[start, des] != 0:
-                edges.append((start, des, 1 - max_probs[start,des]))
-    G.add_weighted_edges_from(edges)
-    return G
-
-# returns the states that we need to do experiments from, and that we can get to reliably
-def getReachableExperimentStates(model, transitionProbs, current_state, confidence_factor, localization_threshold):
-
-        confidences = np.sum(model.TCounts, axis=2) / len(model.env.SDE_Set)
-
-        confidentTransitions = np.zeros(np.shape(transitionProbs))
-        for action_idx in range(len(model.env.A_S)):
-            for m_idx in range(len(model.env.get_SDE())):
+            m_idx = int(node.name)
+            for action_idx in range(len(model.env.A_S)):
+                a = model.env.A_S[action_idx]
                 row = transitionProbs[action_idx, m_idx, :]
-                # if it's had enough testing done
+
+                new_actions = node.actions.copy()
+                new_actions.append(a)
+                new_probability = np.amax(row)*node.probability
                 if confidences[action_idx, m_idx] >= confidence_factor:
                     # print("transition had confidence")
                     # print(row)
                     nonzero_values = np.count_nonzero(row)
-                    # TODO: consider a better way of doing this so that it's dependent upon alpha-epsilon instead of hard coded number
                     # if there's only one max and it's by a decent amount, set that to 1
-                    # if nonzero_values > 1:
-                    #     print(entropy(row, base=nonzero_values))
                     if nonzero_values == 1 or (nonzero_values > 1 and entropy(row, base=nonzero_values) < localization_threshold):
-                        if np.count_nonzero(row == np.amax(row)) == 1:
-                            confidentTransitions[action_idx, m_idx, :] = np.where(row[:] == np.amax(row), np.ones((1, len(model.env.get_SDE()))), np.zeros((1, len(model.env.get_SDE()))))
-                            # print("Should've incremented")
-                            # import pdb; pdb.set_trace()
+                        if np.count_nonzero(row == np.amax(row)) == 1:  # make sure only one max trans prob
+                            not_in_ancestors = True
+                            for ancestor in node.ancestors:
+                                if ancestor.name == str(np.argmax(row)):  # we've already been to this node for our path
+                                    not_in_ancestors = False
+                                    break
+                            if not_in_ancestors is True:
+                                added_nodes.append(Node(str(np.argmax(row)), parent=node, reward=0, probability=new_probability, actions=new_actions))
+                else:  # need to do experimentation
+                    reward = confidences[action_idx, m_idx] / (confidence_factor - 1)
+                    reward = reward * node.probability
+                    # print("-----")
+                    # print(confidences[action_idx, m_idx])
+                    added_nodes.append(Node(str(np.argmax(row)), parent=node, reward=reward, probability=new_probability, actions=new_actions))
+                    if bestNode is None or reward > bestNode.reward:
+                        bestNode = added_nodes[-1]
+
+        if len(added_nodes) == 0:
+            break
+        prev_lvl_nodes = added_nodes
+        depth = depth + 1
+
+    # if(len(model.env.SDE_Set) == 4):
+    #     draw = True
+    #     levels = [[node for node in children] for children in LevelOrderGroupIter(root)]
+    #     level = levels[1]
+    #     for n in level:
+    #         if n.reward != 0:
+    #             draw = False
+    #             break
+    #     if draw is True:
+    #         drawGraph(model, root, bestNode)
+    if bestNode is None:  # never found a place to do an experiment from
+        return None
+    else:
+        return bestNode.actions[:-1]  # don't return the last action as it's the experiment
 
 
-        G = getGraph(model, confidentTransitions)
+def drawGraph(model, root, bestNode):
+    # for line in UniqueDotExporter(root):
+    #     print(line)
 
-        reachableStates = []
-        # get the states of interest. Use the 1 index so we get states (as opposed to actions), and use unique so we don't repeat states that need to explore 2 or more actions
-        states_of_interest = np.unique(np.array(np.where(confidences < confidence_factor))[1,:])
-        # TODO: Make it so that I only choose locations that can be reached by transitions that already have surpassed confidence
-        # if no such states exist, then quit. Would probably get rid of random action part, but may do some random actions for a bit
-        for state_of_interest in states_of_interest:
-            if nx.has_path(G, current_state, state_of_interest):
-                reachableStates.append(state_of_interest)
+    def nodeattrfunc(n):
+        toReturn = ""
+        roundedReward = round(n.reward,3)
+        sde_str = "\n("
+        for m_a in model.env.SDE_Set[int(n.name)]:
+            if m_a == "square":
+                sde_str = sde_str + "&#9633;,"
+            elif m_a == "diamond":
+                sde_str = sde_str + "&#9674;,"
+            else:
+                sde_str = sde_str + m_a + ","
+        sde_str = sde_str[:-1] + ')'  # -1 to get rid of comma
+        if n == bestNode:
+            toReturn = toReturn + 'color=forestgreen, fontcolor=black, fontname="Times-Bold", '
+        else:
+            toReturn = toReturn + 'fontname="Times-Roman", '
+        toReturn = toReturn + 'label="' + n.name + sde_str + '\nR=' + str(roundedReward) + '"'
+        if n.is_leaf and n.reward != 0:
+            toReturn = toReturn + ', style=dashed'
+        return toReturn
 
-        # if len(reachableStates) > 1 or ((len(model.env.get_SDE()) > 2) and np.sum(np.sum(np.sum(confidentTransitions)))) > 1:
-        #     import pdb; pdb.set_trace()
-        # print("confidentTransitions")
-        # print(confidentTransitions)
-        # print("state_of_interest")
-        # print(states_of_interest)
-        # print("reachableStates")
-        # print(reachableStates)
-        random.shuffle(reachableStates) 
+    def edgeattrfunc(n, child):
+        toReturn = ""
+        if child == bestNode:
+            toReturn = toReturn + 'color=forestgreen, fontcolor=black, fontname="Times-Bold"'
+        toReturn = toReturn + 'label=" %s"' % (child.actions[-1])
+        if child.is_leaf and child.reward != 0:
+            toReturn = toReturn + ', style=dashed'
+        return toReturn
+    
+    UniqueDotExporter(root, edgeattrfunc=edgeattrfunc, nodeattrfunc=nodeattrfunc).to_dotfile("Test2_graph.dot")
+    # UniqueDotExporter(root, edgeattrfunc=lambda n, child: 'label="%s"' % (child.actions)).to_dotfile("Test2_graph.dot")
+    cmd = ["dot", "-Tpng", "Test2_graph.dot", "-o", "Test2_graph.png"]
+    check_call(cmd)
 
-        return reachableStates
+    # UniqueDotExporter(root).to_picture("Test2_graph.png")
+    img=mpimg.imread("Test2_graph.png")
+    imgplot = plt.imshow(img)
+    plt.show()
 
-
-
-# h = TrieNode(None,[])
-# insertSequence(h,["nothing1", "west", "nothing"])
-# printTrie(h)
-# print("================")
-# insertSequence(h,["nothing1", "west", "goal"])
-# printTrie(h)
-# print("------------------")
-# insertSequence(h,["nothing1", "east", "goal"])
-# printTrie(h)
