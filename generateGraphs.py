@@ -151,6 +151,7 @@ def generateGraphTest2():
             for filename in files:
                 # find the returned model num
                 finalModelNum = -1
+                isValidSplitTrial = False
                 with open(filename, mode='r') as csv_file:
                     csv_reader = csv.DictReader(csv_file)
                     foundFinal = False
@@ -161,6 +162,13 @@ def generateGraphTest2():
                         if foundFinal is True and finalModelNum == -1:
                             temp = row['0']
                             finalModelNum = int(temp[len('Model Num '):])
+                        if foundFinal is True and row['0'] == 'Absolute Error:':
+                            absError = float(row['1'])
+                            if absError < 1:
+                                isValidSplitTrial = True
+
+                if not isValidSplitTrial:
+                    continue
                 
                 with open(filename, mode='r') as csv_file:
                     iteration_num = 0
@@ -522,6 +530,42 @@ def getModelGraph(env_num, SDE_Set, A_S, transitionProbs, filename):
         imgplot = plt.imshow(img)
         plt.show()
 
+
+def getPercentAccurate(environmentNum):    
+    for versionNum in [1,2]:
+        files = glob.glob("./Testing Data/Test2_v" + str(versionNum) + "/Test2_v" + str(versionNum) + "_env" + str(environmentNum) + "*.csv")
+        if len(files) == 0:
+            continue
+
+        validCount = 0
+        totalCount = 0
+        for filename in files:
+            # env = re.search("env\d+", filename).group()
+            # env_num = env[len("env"):]
+            # if(str(env_num) != str(environmentNum)):
+            #     continue
+            # find the returned model num
+            totalCount = totalCount + 1
+            finalModelNum = -1
+            isValidSplitTrial = False
+            with open(filename, mode='r') as csv_file:
+                csv_reader = csv.DictReader(csv_file)
+                foundFinal = False
+                for row in csv_reader:
+                    if row['0'] == '*':
+                        foundFinal = True
+                        continue
+                    if foundFinal is True and finalModelNum == -1:
+                        temp = row['0']
+                        finalModelNum = int(temp[len('Model Num '):])
+                    if foundFinal is True and row['0'] == 'Absolute Error:':
+                        absError = float(row['1'])
+                        if absError < 1:
+                            validCount = validCount+1
+                            isValidSplitTrial = True
+
+        print("Percent Trials Correct for Version " + str(versionNum) + " : " + str(validCount/totalCount))
+
 if __name__ == "__main__":
     # envNum = 42
     # envString = "Example"+str(envNum)
@@ -530,3 +574,4 @@ if __name__ == "__main__":
     # generateGraphTest1(False,False)
     # generateGraphTest2_2(False,False, 2)
     generateGraphTest2()
+    # getPercentAccurate(22)
