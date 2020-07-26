@@ -1,0 +1,56 @@
+0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29
+github Code Version (SHA):,3130f818d955eaa9876b4af7408e9fb46046852d
+Environment Observations,Environment Actions,alpha,epsilon,numActions,explore,patience,gainThresh,insertRandActions,useBudd,revisedSplitting,haveControl,confidence_factor
+"['diamond', 'square']","['x', 'y']",0.75,0.75,75000,0.5,0,0.01,False,True,False,True,250
+
+Model Num 0
+Model States: 
+['diamond'],['square']
+Iteration: ,0
+Error:,0.1961685475754667
+Absolute Error:,1
+Transition Probabilities
+0.5,0.5
+0.5,0.5
+
+0.5,0.5
+0.5,0.5
+
+Transition Gammas
+1.0,1.0
+1.0,1.0
+
+1.0,1.0
+1.0,1.0
+
+Iteration: ,2438
+Error:,0.1416999362776155
+Absolute Error:,1
+Transition Probabilities
+0.45297805642633227,0.5470219435736677
+0.37872340425531914,0.6212765957446809
+
+0.426,0.574
+0.6139767054908486,0.3860232945091514
+
+*,*,*,*,*,*,*,*,*,*,*
+Model Num 0
+Model States: 
+['diamond'],['square']
+Iteration: ,2438
+Error:,0.14152103115157671
+Absolute Error:,1
+Transition Probabilities
+0.45297805642633227,0.5470219435736677
+0.37872340425531914,0.6212765957446809
+
+0.426,0.574
+0.6139767054908486,0.3860232945091514
+
+Transition Gammas
+289.0,349.0
+267.0,438.0
+
+213.0,287.0
+369.0,232.0
+
