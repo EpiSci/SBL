@@ -96,12 +96,11 @@ def generateGraphTest1(useFirstPoint,genAbsoluteError):
     
     # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
     if v1Data.size > 0: # Check to make sure at least one trial was successful
-        print(v1Data_average.size)
-        plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
+        plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Equation #2#",color="blue",markersize=10,capsize=5)
     
     # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
     if v2Data.size > 0:
-        plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
+        plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="Equation #4#",color="orange",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:
@@ -109,8 +108,12 @@ def generateGraphTest1(useFirstPoint,genAbsoluteError):
         else:
             plt.axvline(x=split, color='gray')
     plt.xlabel("Number of Actions Taken")
-    plt.ylabel("Error")
-    plt.title("Model Error vs. Number of Actions Taken For Environment " + env_num)
+    if (genAbsoluteError):
+        yLabel = "Absolute Error"
+    else:
+        yLabel = "Relative Error"
+    plt.ylabel(yLabel)
+    plt.title("Model Error vs. Number of Actions Taken For " + str(getEnvironmentName(env_num)))
     plt.legend()
 
     axes = plt.gca()
@@ -219,7 +222,7 @@ def generateGraphTest2():
 
         plt.xlabel("Model Split Number")
         plt.ylabel("Number of Actions Taken")
-        plt.title("Number of Actions Taken per Model Split For Environment " + env_num)
+        plt.title("Number of Actions Taken per Model Split For " + getEnvironmentName(env_num))
         plt.legend()
 
     plt.show()
@@ -353,13 +356,13 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
     plt.show()
 
 
-def generateGraphTest3(useFirstPoint):
+def generateGraphTest3(useFirstPoint,genAbsoluteError):
     # use list and not numpy array since we don't know how many iterations were done
     v1Data = []
     v2Data = []
     model_splits = []
     
-    for versionNum in range(1, 1+3):
+    for versionNum in [1,3]:
         files = glob.glob("./Testing Data/Test3_v" + str(versionNum) + "/*.csv")
         if len(files) == 0:
             continue
@@ -371,45 +374,79 @@ def generateGraphTest3(useFirstPoint):
             data = v1Data
         else:
             data = v2Data
+
+        validCount = 0
+        totalCount = len(files)
         for filename in files:
+            # find the returned model num
+            finalModelNum = -1
+            isValidSplitTrial = False
             with open(filename, mode='r') as csv_file:
                 csv_reader = csv.DictReader(csv_file)
-                iteration_num = 0
-                model_num = 0
-                offset_amount = 0
-                trialData = []
+                foundFinal = False
                 for row in csv_reader:
-                    if row['0'] == 'Model Num ' + str(model_num+1):
-                        if iteration_num + offset_amount not in model_splits:
-                            model_splits.append(iteration_num + offset_amount)
-                        model_num = model_num + 1
-                        offset_amount = offset_amount + iteration_num + 1  # add the number of iterations from the last model + 1 (since we start counting at zero)
-                    elif row['0'] == 'Iteration: ':
-                        iteration_num = float(row['1'])
-                    elif row['0'] == 'Error:':
-                        if iteration_num == 0 and useFirstPoint is False:
-                            continue
-                        trialData.append([iteration_num + offset_amount, float(row['1'])])
-                data.append(trialData)
+                    if row['0'] == '*':
+                        foundFinal = True
+                        continue
+                    if foundFinal is True and finalModelNum == -1:
+                        temp = row['0']
+                        finalModelNum = int(temp[len('Model Num '):])
+                    if foundFinal is True and row['0'] == 'Absolute Error:':
+                        absError = float(row['1'])
+                        if absError < 1:
+                            validCount = validCount+1
+                            isValidSplitTrial = True
 
+            if isValidSplitTrial:
+                with open(filename, mode='r') as csv_file:
+                    csv_reader = csv.DictReader(csv_file)
+                    iteration_num = 0
+                    model_num = 0
+                    offset_amount = 0
+                    trialData = []
+                    for row in csv_reader:
+                        if model_num > finalModelNum:
+                            break
+                        if row['0'] == '*':
+                            break
+                        elif row['0'] == 'Model Num ' + str(model_num+1):
+                            if iteration_num + offset_amount not in model_splits:
+                                model_splits.append(iteration_num + offset_amount)
+                            model_num = model_num + 1
+                            offset_amount = offset_amount + iteration_num + 1  # add the number of iterations from the last model + 1 (since we start counting at zero)
+                        elif row['0'] == 'Iteration: ':
+                            iteration_num = float(row['1'])
+                        elif row['0'] == 'Error:' and genAbsoluteError is False:
+                            if iteration_num == 0 and useFirstPoint is False:
+                                continue
+                            trialData.append([iteration_num + offset_amount, float(row['1'])])
+                        elif row['0'] == 'Absolute Error:' and genAbsoluteError:
+                            if float(row['1']) < 1:
+                                if iteration_num == 0 and useFirstPoint is False:
+                                    continue
+                                trialData.append([iteration_num + offset_amount, float(row['1'])])
+
+                    data.append(trialData)
+
+        print("Percent Trials Correct for Version " + str(versionNum) + " : " + str(validCount/totalCount))
     v1Data = np.array(v1Data)
-    if v1Data.size > 0:
+    if v1Data.size > 0: # Check to make sure at least one trial was successful
         v1Data_average = np.mean(v1Data, axis=0)
         v1Data_stdDev = np.std(v1Data, axis=0)
 
-    v2Data_average = np.mean(v2Data, axis=0)
-    if v2Data.size > 0:
-        v2Data = np.array(v2Data)
+    v2Data = np.array(v2Data)
+    if v2Data.size > 0: # Check to make sure at least one trial was successful
+        v2Data_average = np.mean(v2Data, axis=0)
         v2Data_stdDev = np.std(v2Data, axis=0)
-
     
     # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
+    if v1Data.size > 0: # Check to make sure at least one trial was successful
+        print(v1Data_average.size)
+        plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins et al. SDE Generation",color="blue",markersize=10,capsize=5)
+    
     # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
-    if v1Data.size > 0:
-        plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="Collins",color="blue",markersize=10,capsize=5)
-
     if v2Data.size > 0:
-        plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="BUDD",color="orange",markersize=10,capsize=5)
+        plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="Revised SDE Generation",color="orange",markersize=10,capsize=5)
     for num in range(len(model_splits)):
         split = model_splits[num]
         if num == 0:
@@ -417,8 +454,12 @@ def generateGraphTest3(useFirstPoint):
         else:
             plt.axvline(x=split, color='gray')
     plt.xlabel("Number of Actions Taken")
-    plt.ylabel("Error")
-    plt.title("Model Error vs. Number of Actions Taken For Environment " + env_num)
+    if (genAbsoluteError):
+        yLabel = "Absolute Error"
+    else:
+        yLabel = "Relative Error"
+    plt.ylabel(yLabel)
+    plt.title("Model Error vs. Number of Actions Taken For " + getEnvironmentName(env_num))
     plt.legend()
 
     axes = plt.gca()
@@ -426,6 +467,20 @@ def generateGraphTest3(useFirstPoint):
         axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
 
     plt.show()
+
+def getEnvironmentName(env_num):
+    if env_num == "2":
+        return "αϵ-Shape Environment"
+    elif env_num == "3":
+        return "αϵ-Little Prince Environment"
+    elif env_num == "4":
+        return "αϵ-1D Maze Environment"
+    elif env_num == "7":
+        return "αϵ-Balance Beam Environment"
+    return "Environment " + env_num
+
+
+
 
 
 def getModelGraph(env_num, SDE_Set, A_S, transitionProbs, filename):
@@ -571,7 +626,11 @@ if __name__ == "__main__":
     # envString = "Example"+str(envNum)
     # env = locals()[envString]()
     # getModelGraph(envNum, env.SDE_Set, env.A_S, env.get_true_transition_probs(), "env" + str(envNum) + "Graph.png")
-    # generateGraphTest1(False,False)
+    generateGraphTest1(False,False)
     # generateGraphTest2_2(False,False, 2)
+<<<<<<< HEAD
     generateGraphTest2()
     # getPercentAccurate(22)
+=======
+    # generateGraphTest2()
+>>>>>>> bf59d26da8287dfc40ef9436e92708233bd45825
