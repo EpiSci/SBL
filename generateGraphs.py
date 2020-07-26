@@ -626,7 +626,7 @@ if __name__ == "__main__":
     # envString = "Example"+str(envNum)
     # env = locals()[envString]()
     # getModelGraph(envNum, env.SDE_Set, env.A_S, env.get_true_transition_probs(), "env" + str(envNum) + "Graph.png")
-    generateGraphTest1(False,False)
+    # generateGraphTest1(False,False)
     # generateGraphTest2_2(False,False, 2)
     generateGraphTest2()
     # getPercentAccurate(22)
