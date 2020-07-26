@@ -136,6 +136,32 @@ class Example2(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
 
+#This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
+class Example22(sPOMDPModelExample):
+    def __init__(self):
+        sPOMDPModelExample.__init__(self)
+        #Set Environment Details
+        self.O_S = ["diamond", "square"] #Observation Set
+        self.A_S = ["x", "y"] #Action Set
+        self.State_Size = 4
+        self.Alpha = 0.75
+        self.Epsilon = 0.99
+        sPOMDPNode.O_S = self.O_S
+        sPOMDPNode.A_S = self.A_S
+        sPOMDPNode.State_Size = self.State_Size
+        sPOMDPNode.Alpha = self.Alpha
+        sPOMDPNode.Epsilon = self.Epsilon
+
+        #Use Already Known SDE
+        self.SDE_Set.append([self.O_S[0]])
+        self.SDE_Set.append([self.O_S[1]])
+
+        #Generate States
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 2})) #state 0
+        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 1, "y": 3})) #state 1
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
+        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
+
 #This class extends the generic sPOMDP model. This model is the from the environment from Figure 3, but only with 3 known SDEs (rose, volcano, or nothing)
 class Example3(sPOMDPModelExample):
     def __init__(self):
