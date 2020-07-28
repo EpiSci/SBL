@@ -306,6 +306,10 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
                     model_splits.append(model_splits_row)
 
         print("Percent Trials Correct for Version " + str(versionNum) + " : " + str(validCount/totalCount))
+
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+
     # import pdb; pdb.set_trace()
     v1Data = np.array(v1Data)
     if v1Data.size > 0: # Check to make sure at least one trial was successful
@@ -320,22 +324,24 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
     # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
     if v1Data.size > 0: # Check to make sure at least one trial was successful
         print(v1Data_average.size)
-        plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor="#0B00AB",label="W/out Control",color="blue",markersize=10,capsize=5)
+        plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="W/out Control",c=colors[0])
+        # plt.plot(v1Data_average[:,0], v1Data_average[:,1], marker='.', label="W/out Control",color=colors[0])
     
     # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
     if v2Data.size > 0:
-        plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor="#BD6800",label="W/ Control",color="orange",markersize=10,capsize=5)
+        plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="W/ Control",c=colors[1])
+        # plt.plot(v2Data_average[:,0], v2Data_average[:,1], marker='.',label="W/ Control",color=colors[1])
     for row_num in range(len(model_splits)):
         row = model_splits[row_num]
         color = ''
         grouping = ''
         linestyle = ''
         if row_num == 0:
-            color = "blue"
+            color = colors[0]
             grouping = " W/out Control"
             linestyle = "-"
         else:
-            color = "orange"
+            color = colors[1]
             grouping = " W Control"
             linestyle = "--"
         for num in range(len(row)):
@@ -346,7 +352,7 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
                 plt.axvline(x=split, color=color, linestyle=linestyle)
     plt.xlabel("Number of Actions Taken")
     plt.ylabel("Error")
-    plt.title("Model Error vs. Number of Actions Taken For Environment " + str(environmentNum))
+    plt.title("Model Error vs. Number of Actions Taken For " + getEnvironmentName(str(environmentNum)))
     plt.legend()
 
     axes = plt.gca()
@@ -361,6 +367,7 @@ def generateGraphTest3(useFirstPoint,genAbsoluteError):
     v1Data = []
     v2Data = []
     model_splits = []
+
     
     for versionNum in [1,3]:
         files = glob.glob("./Testing Data/Test3_v" + str(versionNum) + "/*.csv")
@@ -627,6 +634,6 @@ if __name__ == "__main__":
     # env = locals()[envString]()
     # getModelGraph(envNum, env.SDE_Set, env.A_S, env.get_true_transition_probs(), "env" + str(envNum) + "Graph.png")
     # generateGraphTest1(False,False)
-    # generateGraphTest2_2(False,False, 2)
-    generateGraphTest2()
+    generateGraphTest2_2(False,False, 2)
+    # generateGraphTest2()
     # getPercentAccurate(22)
