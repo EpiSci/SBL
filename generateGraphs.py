@@ -9,6 +9,7 @@ from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from pomdp import *
 import codecs
+import matplotlib.ticker as mtick
 
 
 def generateGraphTest1(useFirstPoint,genAbsoluteError):
@@ -125,6 +126,7 @@ def generateGraphTest1(useFirstPoint,genAbsoluteError):
 
 def generateGraphTest2():
     # use list and not numpy array since we don't know how many iterations were done
+
     environments = []
     files = glob.glob("./Testing Data/Test2_v" + str(1) + "/*.csv")
 
@@ -208,27 +210,38 @@ def generateGraphTest2():
             v3Data_stdDev = np.std(v3Data, axis=0)
             xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
-            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "BUDD W/out Control")), np.full(np.shape(v2Data[:,0]), "BUDD W/ Control")))
+            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "BUDD Without Control")), np.full(np.shape(v2Data[:,0]), "BUDD With Control")))
         else:
             xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
-            groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "W/out Control")), np.full(np.shape(v2Data[:,0]), "W/ Control")))
+            groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "Without Control")), np.full(np.shape(v2Data[:,0]), "With Control")))
 
+
+        plt.rcParams.update({'font.size': 16})
 
         plt.figure(figure_num)
         figure_num = figure_num + 1
-        sns.barplot(x=xData, y=yData, hue=groupings, capsize=0.1) 
+        ax = sns.barplot(x=xData, y=yData, hue=groupings, capsize=0.1) 
 
 
         plt.xlabel("Model Split Number")
         plt.ylabel("Number of Actions Taken")
-        plt.title("Number of Actions Taken per Model Split For " + getEnvironmentName(env_num))
-        plt.legend()
+        ax.set_title("Number of Actions Taken per Model Split \nFor " + getEnvironmentName(env_num))
+        xlabels = ['{:,d}'.format(x) for x in ax.get_xticks()]
+        ax.set_xticklabels(xlabels)
+        ax.tick_params(axis='x')
+        ldg = plt.legend()
+        ldg.get_frame().set_edgecolor('black')
 
-    plt.show()
+        # plt.show()
+        plt.savefig("Testing Data/Test2env" + env_num + ".png", bbox_inches='tight')
 
 
 def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
+
+    parameters = {'font.size': 16}
+    plt.rcParams.update(parameters)
+
     # use list and not numpy array since we don't know how many iterations were done
     v1Data = []
     v2Data = []
@@ -324,13 +337,11 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
     # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
     if v1Data.size > 0: # Check to make sure at least one trial was successful
         print(v1Data_average.size)
-        plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="W/out Control",c=colors[0])
-        # plt.plot(v1Data_average[:,0], v1Data_average[:,1], marker='.', label="W/out Control",color=colors[0])
+        plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="Without Control",c=colors[0])
     
     # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
     if v2Data.size > 0:
-        plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="W/ Control",c=colors[1])
-        # plt.plot(v2Data_average[:,0], v2Data_average[:,1], marker='.',label="W/ Control",color=colors[1])
+        plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="With Control",c=colors[1])
     for row_num in range(len(model_splits)):
         row = model_splits[row_num]
         color = ''
@@ -338,28 +349,40 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
         linestyle = ''
         if row_num == 0:
             color = colors[0]
-            grouping = " W/out Control"
+            grouping = "Without Control"
             linestyle = "-"
         else:
             color = colors[1]
-            grouping = " W Control"
+            grouping = "With Control"
             linestyle = "--"
         for num in range(len(row)):
             split = model_splits[row_num][num]
             if num == 0:
-                plt.axvline(x=split, color=color, label="Model Split" + grouping, linestyle=linestyle)
+                plt.axvline(x=split, color=color, label= grouping + "\nModel Split", linestyle=linestyle)
             else:
                 plt.axvline(x=split, color=color, linestyle=linestyle)
+
+    # plt.rcParams.update({'font.size': 18})
+    # plt.rcParams.update({'axes.titlesize': 18})
+    # parameters = {'font.size': 16,
+    #   'xtick.labelsize': 20,
+    #   'ytick.labelsize': 20}
+    # plt.rcParams.update(parameters)
+
+
     plt.xlabel("Number of Actions Taken")
     plt.ylabel("Error")
-    plt.title("Model Error vs. Number of Actions Taken For " + getEnvironmentName(str(environmentNum)))
-    plt.legend()
+    ax = plt.gca()
+    ax.set_title("Model Error vs. Number of Actions Taken \nFor " + getEnvironmentName(str(environmentNum)))
+    leg = plt.legend(fontsize=14)
+    leg.get_frame().set_edgecolor('black')
 
-    axes = plt.gca()
+
     if useFirstPoint:
-        axes.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
+        ax.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
 
-    plt.show()
+    plt.savefig("Testing Data/Test2_actions.png", bbox_inches='tight')
+    # plt.show()
 
 
 def generateGraphTest3(useFirstPoint,genAbsoluteError):
