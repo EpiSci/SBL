@@ -193,12 +193,28 @@ def generateGraphTest2():
                     if model_num == finalModelNum:
                         data.append([model_num, iteration_num])
 
+
         v1Data = np.array(v1Data)
         v2Data = np.array(v2Data)
         v1Data_average = np.mean(v1Data, axis=0)
         v2Data_average = np.mean(v2Data, axis=0)
         v1Data_stdDev = np.std(v1Data, axis=0)
         v2Data_stdDev = np.std(v2Data, axis=0)
+
+        # import pdb; pdb.set_trace()
+        print("-----")
+        print(env_num)
+        v1_sum = np.sum(v1Data, axis=0)
+        v2_sum = np.sum(v2Data, axis=0)
+        print(v1_sum)
+        print(v2_sum)
+        v1_avg = v1_sum / 10
+        v2_avg = v2_sum / 10
+        print(v1_avg)
+        print(v2_avg)
+        print(v2_avg[1] / v1_avg[1])
+
+
 
         xData = []
         yData = []
@@ -214,7 +230,7 @@ def generateGraphTest2():
         else:
             xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
-            groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "Without Control")), np.full(np.shape(v2Data[:,0]), "With Control")))
+            groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "Random Policy")), np.full(np.shape(v2Data[:,0]), "Navigation Policy")))
 
 
         plt.rcParams.update({'font.size': 16})
@@ -230,7 +246,7 @@ def generateGraphTest2():
         xlabels = ['{:,d}'.format(x) for x in ax.get_xticks()]
         ax.set_xticklabels(xlabels)
         ax.tick_params(axis='x')
-        ldg = plt.legend()
+        ldg = plt.legend(fontsize=14)
         ldg.get_frame().set_edgecolor('black')
 
         # plt.show()
@@ -337,11 +353,11 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
     # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
     if v1Data.size > 0: # Check to make sure at least one trial was successful
         print(v1Data_average.size)
-        plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="Without Control",c=colors[0])
+        plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="Random Policy",c=colors[0])
     
     # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
     if v2Data.size > 0:
-        plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="With Control",c=colors[1])
+        plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="Navigation Policy",c=colors[1])
     for row_num in range(len(model_splits)):
         row = model_splits[row_num]
         color = ''
@@ -349,11 +365,11 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
         linestyle = ''
         if row_num == 0:
             color = colors[0]
-            grouping = "Without Control"
+            grouping = "Random Policy"
             linestyle = "-"
         else:
             color = colors[1]
-            grouping = "With Control"
+            grouping = "Navigation Policy"
             linestyle = "--"
         for num in range(len(row)):
             split = model_splits[row_num][num]
@@ -569,6 +585,16 @@ def getModelGraph(env_num, SDE_Set, A_S, transitionProbs, filename):
                         rank = "sink"
                     line = '  { rank=' + rank + '; ' + '"' + str(sde_idx) + '"; }'
                 lines.append(line)
+        elif env_num == 1:
+            for sde_idx in range(len(SDE_Set)):
+                line = ""
+                if sde_idx == 3: # we'll do this one when sde_idx == 2
+                    line = '  { rank=same; "1"; "0"; }'
+                elif sde_idx == 2:
+                    line = '  { rank=same; "2"; "3"; }'
+                else:
+                    continue
+                lines.append(line)
         # elif env_num == 42:
         #     line = '  { rank=same; "0"; "1"; "2"; "3"; }'
         #     lines.append(line)
@@ -596,12 +622,12 @@ def getModelGraph(env_num, SDE_Set, A_S, transitionProbs, filename):
         lines.append("}")
 
         # now write the file
-        # with codecs.open("dotfile.dot", "w", "utf-8") as dotfile:
-        with NamedTemporaryFile("wb", delete=False) as dotfile:
+        with codecs.open("dotfile.dot", "w", "utf-8") as dotfile:
+        # with NamedTemporaryFile("wb", delete=False) as dotfile:
             dotfilename = dotfile.name
             for line in lines:
-                # dotfile.write("%s\n" % line)
-                dotfile.write(("%s\n" % line).encode("utf-8"))
+                dotfile.write("%s\n" % line)
+                # dotfile.write(("%s\n" % line).encode("utf-8"))
             dotfile.flush()
             cmd = ["dot", dotfilename, "-T", "png", "-o", filename]
             # dot dotfile.dot -T png -o temp.png
@@ -652,11 +678,11 @@ def getPercentAccurate(environmentNum):
         print("Percent Trials Correct for Version " + str(versionNum) + " : " + str(validCount/totalCount))
 
 if __name__ == "__main__":
-    # envNum = 42
+    # envNum = 1
     # envString = "Example"+str(envNum)
     # env = locals()[envString]()
     # getModelGraph(envNum, env.SDE_Set, env.A_S, env.get_true_transition_probs(), "env" + str(envNum) + "Graph.png")
-    # generateGraphTest1(False,False)
-    generateGraphTest2_2(False,False, 2)
+    generateGraphTest1(False,False)
+    # generateGraphTest2_2(False,False, 2)
     # generateGraphTest2()
     # getPercentAccurate(22)
