@@ -1,7 +1,6 @@
-import budd 
 from pomdp import *
 import datetime
-import collins
+import spomdp
 
 #Writes a numpy matrix to an xls file. Returns the last row the matrix was written on. Currently supports only 3D numpy matrices.
 def writeNumpyMatrixToFile(sheet, matrix, row=0,col=0):
@@ -37,17 +36,7 @@ def test1_v1(filename,env):
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
-
-#Uses the Test 1 parameters outlined in the SBLTests.docx file without column updates (Our method)
-def test1_v2(filename,env):
-    gainSplitThresh = 0.05 #Threshold of gain to determine if the model should stop learning
-    surpriseThresh = 0 #0; used for one-step extension gain splitting
-    entropyThresh = 0.55
-    numActionsPerExperiment = 50000 #Note: for larger environments (e.g. Example5), this should be larger (e.g. 200,000)
-    explore = 0.05
-    percentTimeofBudd = 0.9
-    budd.approximateSPOMDPLearning(env=env, gainThresh=gainSplitThresh, numActions=numActionsPerExperiment, explore=explore, surpriseThresh=surpriseThresh, splitWithEntropy=True, entropyThresh=entropyThresh,writeToFile=True, earlyTermination=False, budd=True, percentTimeofBudd=percentTimeofBudd, filename=filename)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method) with Budd enabled
 def test1_v3(filename,env):
@@ -61,7 +50,7 @@ def test1_v3(filename,env):
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1(filename,env):
@@ -75,7 +64,7 @@ def test2_v1(filename,env):
     useBudd = True
     revisedSplitting = False
     localization_threshold = 0.75
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v2(filename,env):
@@ -89,7 +78,7 @@ def test2_v2(filename,env):
     useBudd = True
     revisedSplitting = False
     localization_threshold = 0.75
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v3(filename,env):
@@ -103,7 +92,7 @@ def test2_v3(filename,env):
     patience = 0
     revisedSplitting = False
     localization_threshold = 0.75
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with Collins' method of SDE splitting
@@ -118,7 +107,7 @@ def test3_v1(filename,env):
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with improved SDE splitting
@@ -133,7 +122,7 @@ def test3_v3(filename,env):
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    collins.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
     
 if __name__ == "__main__":
     testNum = 2
