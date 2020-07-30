@@ -678,11 +678,39 @@ def getPercentAccurate(environmentNum):
         print("Percent Trials Correct for Version " + str(versionNum) + " : " + str(validCount/totalCount))
 
 if __name__ == "__main__":
+
+    # Test 1 (Testing Transition Posterior Update Equation)
+    # Relative Error
+    generateGraphTest1(False,False)
+
+    # Test 1 (Testing Transition Posterior Update Equation)
+    # Absolute Error
+    # generateGraphTest1(False,True)
+
+
+    # Test 2 (Testing Agent Autonomous Navigation Algorithm)
+    # Bar Graphs for Relative Error
+    # generateGraphTest2()
+
+    # Test 2 (Testing Agent Autonomous Navigation Algorithm)
+    # Scatter Plot for Single Trial Comparison, Shape Environment
+    # generateGraphTest2_2(False, False, 2)
+
+
+    # Test 3 (Testing SDE Generation Algorithms)
+    # Relative Error
+    # generateGraphTest3(False,False)
+
+    # Test 3 (Testing SDE Generation Algorithms)
+    # Absolute Error
+    # generateGraphTest3(False,True)
+
+
     # envNum = 1
     # envString = "Example"+str(envNum)
     # env = locals()[envString]()
     # getModelGraph(envNum, env.SDE_Set, env.A_S, env.get_true_transition_probs(), "env" + str(envNum) + "Graph.png")
-    generateGraphTest1(False,False)
+
     # generateGraphTest2_2(False,False, 2)
     # generateGraphTest2()
     # getPercentAccurate(22)
