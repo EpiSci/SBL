@@ -26,9 +26,6 @@ class sPOMDPNode():
     def step_action(self, action:str):
         #try:
         return np.random.choice(np.arange(0, self.State_Size), p=self.Transition_Dictionary[action])
-        #except:
-        #    print("Invalid action.  Check your action inputs and action_dictionary.")
-        #    exit()
             
     def get_observation(self):
         Random_Sample = np.random.random()
@@ -81,7 +78,7 @@ class sPOMDPModelExample():
         return observationProbs
 
 
-#This class extends the generic sPOMDP model. This model is the one from figure 2.
+#This class extends the generic sPOMDP model. This model is the fully-built ae-Shape environment
 class Example1(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -110,7 +107,7 @@ class Example1(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
 
 
-#This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
+#This class extends the generic sPOMDP model. This model is the ae-Shape environment starting with initial observations.
 class Example2(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -136,7 +133,7 @@ class Example2(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
 
-#This class extends the generic sPOMDP model. This model is the from the environment from Figure 2, but only with 2 known SDEs (square or diamond)
+#This class extends the generic sPOMDP model. This model is the ae-Shape environment starting with initial observations. The values of alpha and epsilon are significantly lower than other environments
 class Example22(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -162,7 +159,7 @@ class Example22(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 0})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 1})) #state 3
 
-#This class extends the generic sPOMDP model. This model is the from the environment from Figure 3, but only with 3 known SDEs (rose, volcano, or nothing)
+#This class extends the generic sPOMDP model. This model is the ae-Little Prince environment starting with initial observations.
 class Example3(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -190,7 +187,7 @@ class Example3(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 1, "b": 0, "t": 2})) #state 3
 
 
-#This class extends the generic sPOMDP model. This model is the from the environment from Figure 3, but only with 3 known SDEs (rose, volcano, or nothing)
+#This class extends the generic sPOMDP model. This model is the fully built ae-Little Prince environment.
 class Example32(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -219,7 +216,7 @@ class Example32(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"f": 1, "b": 0, "t": 2})) #state 3
 
 
-#This class extends the generic sPOMDP model. This model is the from the environment from Figure 4, but only with 2 known SDEs (goal, nothing)
+#This class extends the generic sPOMDP model. This model is the ae-1D Maze environment starting with initial observations.
 class Example4(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -245,6 +242,7 @@ class Example4(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 3, "west": 1})) #state middle
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 0, "west": 2})) #state right
 
+#This class extends the generic sPOMDP model. This model is the fully built ae-1D Maze environment.    
 class Example42(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -273,43 +271,8 @@ class Example42(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 3, "west": 1})) #state middle
         self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"east": 0, "west": 2})) #state right
 
-
-#This class extends the generic sPOMDP model. This model is the from the environment from Figure 5, 
-#but only with 5 known starting SDEs (nothing, LRVForward, MRVForward, LRVDocked, MRVDocked)
-class Example5(sPOMDPModelExample):
-    def __init__(self):
-        sPOMDPModelExample.__init__(self)
-        #Set Environment Details
-        self.O_S = ["nothing","LRVForward", "MRVForward", "LRVDocked", "MRVDocked"] #Observation Set
-        self.A_S = ["b", "f", "t"] #Action Set
-        self.State_Size = 8
-        self.Alpha = 0.99
-        self.Epsilon = 0.99
-        sPOMDPNode.O_S = self.O_S
-        sPOMDPNode.A_S = self.A_S
-        sPOMDPNode.State_Size = self.State_Size
-        sPOMDPNode.Alpha = self.Alpha
-        sPOMDPNode.Epsilon = self.Epsilon
-
-        #Use Already Known SDE
-        self.SDE_Set.append([self.O_S[0]])
-        self.SDE_Set.append([self.O_S[1]])
-        self.SDE_Set.append([self.O_S[2]])
-        self.SDE_Set.append([self.O_S[3]])        
-        self.SDE_Set.append([self.O_S[4]])
-
-        #Generate States
-        self.Node_Set.append(sPOMDPNode(Observation = "LRVDocked", Action_Dictionary = {"b": 7, "f": 4, "t": 1})) #state 0
-        self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 1, "f": 1, "t": 4})) #state 1
-        self.Node_Set.append(sPOMDPNode(Observation = "MRVForward", Action_Dictionary = {"b": 3, "f": 1, "t": 5})) #state 2
-        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"b": 0, "f": 2, "t": 6})) #state 3
-        self.Node_Set.append(sPOMDPNode(Observation = "nothing", Action_Dictionary = {"b": 7, "f": 5, "t": 1})) #state 4
-        self.Node_Set.append(sPOMDPNode(Observation = "LRVForward", Action_Dictionary = {"b": 4, "f": 6, "t": 2})) #state 5
-        self.Node_Set.append(sPOMDPNode(Observation = "LRVForward", Action_Dictionary = {"b": 6, "f": 6, "t": 3})) #state 6
-        self.Node_Set.append(sPOMDPNode(Observation = "MRVDocked", Action_Dictionary = {"b": 7, "f": 4, "t": 1})) #state 7
-
-
-# The ladder environment. Length is the number of intermediate diamond states between the squares. y actions lead forward, x falls off
+        
+#This class extends the generic sPOMDP model. This model is the fully built ae-Balance Beam environment. y actions lead forward, x falls off            
 class Example6(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -338,7 +301,7 @@ class Example6(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 3})) #state 3
 
 
-# The ladder environment without SDEs. y actions lead forward, x falls off
+#This class extends the generic sPOMDP model. This model is the ae-Balance Beam environment starting with initial observations. y actions lead forward, x falls off
 class Example7(sPOMDPModelExample):
     def __init__(self):
         sPOMDPModelExample.__init__(self)
@@ -364,60 +327,6 @@ class Example7(sPOMDPModelExample):
         self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 0, "y": 3})) #state 2
         self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 3})) #state 3
 
-
-# The slide environment without SDEs
-class Example8(sPOMDPModelExample):
-    def __init__(self):
-        sPOMDPModelExample.__init__(self)
-        #Set Environment Details
-        self.O_S = ["square", "diamond"] #Observation Set
-        self.A_S = ["x", "y"] #Action Set
-        self.State_Size = 4
-        self.Alpha = 0.99
-        self.Epsilon = 0.99
-        sPOMDPNode.O_S = self.O_S
-        sPOMDPNode.A_S = self.A_S
-        sPOMDPNode.State_Size = self.State_Size
-        sPOMDPNode.Alpha = self.Alpha
-        sPOMDPNode.Epsilon = self.Epsilon
-
-        #Use Already Known SDE
-        self.SDE_Set.append([self.O_S[0]])
-        self.SDE_Set.append([self.O_S[1]])
-
-        #Generate States
-        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 1})) #state 0
-        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 2})) #state 1
-        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 3, "y": 3})) #state 2
-        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 2})) #state 3
-
-# The slide environment with SDEs
-class Example9(sPOMDPModelExample):
-    def __init__(self):
-        sPOMDPModelExample.__init__(self)
-        #Set Environment Details
-        self.O_S = ["square", "diamond"] #Observation Set
-        self.A_S = ["x", "y"] #Action Set
-        self.State_Size = 4
-        self.Alpha = 0.99
-        self.Epsilon = 0.99
-        sPOMDPNode.O_S = self.O_S
-        sPOMDPNode.A_S = self.A_S
-        sPOMDPNode.State_Size = self.State_Size
-        sPOMDPNode.Alpha = self.Alpha
-        sPOMDPNode.Epsilon = self.Epsilon
-
-        #Use Already Known SDE
-        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[1]])
-        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[1]])
-        self.SDE_Set.append([self.O_S[1], self.A_S[0], self.O_S[0]])
-        self.SDE_Set.append([self.O_S[0], self.A_S[1], self.O_S[1], self.A_S[0], self.O_S[0]])
-
-        #Generate States
-        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 1})) #state 0
-        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 2, "y": 2})) #state 1
-        self.Node_Set.append(sPOMDPNode(Observation = "diamond", Action_Dictionary = {"x": 3, "y": 3})) #state 2
-        self.Node_Set.append(sPOMDPNode(Observation = "square", Action_Dictionary = {"x": 0, "y": 2})) #state 3
 
 #Used in Algorithm 3 code as a generic model.
 class genericModel(sPOMDPModelExample):
@@ -451,7 +360,6 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
     oneStep_TransitionProbs = OneStep_Gammas / np.reshape(np.repeat(np.sum(OneStep_Gammas, axis = 4),len(env.SDE_Set),axis=3),OneStep_Gammas.shape)
     mSinglePrimeSum_aPrime = np.sum(OneStep_Gammas,axis = 4) #The total number of times the m' state is entered from state m under action a with respect to action a'
     mSinglePrimeSum = np.sum(mSinglePrimeSum_aPrime,axis = 0) #The total number of times the m' state is entered from state m under action a
-    # mPrimeSum = np.sum(Action_Gammas, axis = 2) #The total number of times the action a is executed from state m
     mPrimeSum = np.sum(np.sum(mSinglePrimeSum, axis = 0), axis=0) #The total number of times the m' state is entered
 
     # Calculate the transition entropies H(Ttma). Calculate the gain values using the OneStep_Gammas
@@ -468,7 +376,6 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
 
                     w_ma = mSinglePrimeSum[a_idx, m_idx, mPrime_idx] / mPrimeSum[mPrime_idx]
                     w_maSum = w_maSum + w_ma
-                    # oneStepTransitionProb = oneStep_TransitionProbs[aPrime_idx,a_idx,m_idx,mPrime_idx,:]
                     oneStepTransitionProb = oneStep_TransitionProbs[a_idx,aPrime_idx,m_idx,mPrime_idx,:]
                     oneStep_TransitionEntropy = np.sum(np.multiply(oneStepTransitionProb,(np.log(oneStepTransitionProb) / np.log(len(env.SDE_Set))))) * -1
                     sigma = (w_ma * oneStep_TransitionEntropy) + sigma
@@ -501,12 +408,7 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
                         w_ma = mSinglePrimeSum[a_idx, m_idx, mPrime_idx] / mPrimeSum[mPrime_idx]
                         c.writerow(["Weight value that the transition m = " + str(m1) + " and a =  " + str(a1) + "causes the transition into m' = " + str(m2) + ":"])
                         c.writerow([str(mSinglePrimeSum[a1_idx, m1_idx, m2_idx] / mPrimeSum[m2_idx])])
-                        # print("One-Step Transition Gamma: " + str(m1) + " " + str(a1) + " " + str(m2) + " " +  str(a1) + " X")
-                        # print(OneStep_Gammas[a1_idx, a2_idx, m1_idx, m2_idx, :])
 
-
-
-    # print(oneStep_TransitionProbs)
     printOneStepTransitions = False
     if printOneStepTransitions:
         print("One Step Transition Probs: ")
@@ -528,7 +430,7 @@ def calculateGain(env, Action_Probs, OneStep_Gammas):
 
     return(gainMA, entropyMA)
 
-# Calculate the error of a model as defined in Equation 6.4 (pg 122) of Collins' Thesis
+# Calculate the Relative Error of a model as defined in Equation 6.4 (pg 122) of Collins' Thesis
 # env holds the SDEs for the model
 def calculateError(env, modelTransitionProbs, T, gammas):
     doRelative = False
@@ -549,9 +451,6 @@ def calculateError(env, modelTransitionProbs, T, gammas):
         Current_Observation, random_action = env.random_step()
         Full_Transition.append(random_action)
         Full_Transition.append(Current_Observation)
-
-    # print("Full_Transition")
-    # print(Full_Transition)
 
     # Generate a belief mask for each model state that indicates what the likelihood is of being in each model state given an observation
     Obs_Belief_Mask_mod = np.zeros((len(env.O_S), len(SDE_List)))
@@ -580,11 +479,6 @@ def calculateError(env, modelTransitionProbs, T, gammas):
         Obs_Probs_mod[o_idx, sde_idx] = env.Epsilon
     Obs_Probs_env = env.get_observation_probs()
 
-    # print("Obs_Probs_mod")
-    # print(Obs_Probs_mod)
-    # print("Obs_Probs_env")
-    # print(Obs_Probs_env)
-
     # Generate starting belief states for environment and model using first observation
     Observation = Full_Transition[0]
     Observation_Idx = env.O_S.index(Observation)
@@ -602,10 +496,6 @@ def calculateError(env, modelTransitionProbs, T, gammas):
     prev_error = 0
     while Transition_Idx < len(Full_Transition)//2:
 
-        # print("Observation: " + str(Observation))
-        # print("Belief_State_mod: " + str(Belief_State_mod))
-        # print("Belief_State_env: " + str(Belief_State_env))
-
         # update the belief states with the new action, observation pair
         Observation = Full_Transition[Transition_Idx*2+2]
         Observation_Idx = env.O_S.index(Observation)
@@ -617,9 +507,7 @@ def calculateError(env, modelTransitionProbs, T, gammas):
         Belief_State_mod = np.dot(Belief_State_mod, modelTransitionProbs[Model_Action_Idx,:,:])
         Belief_State_env = np.dot(Belief_State_env, envTransitionProbs[Model_Action_Idx,:,:])
 
-        # Belief_State_mod = Belief_State_mod*Belief_Mask_mod
         Belief_State_mod = Belief_State_mod/np.sum(Belief_State_mod)
-        # Belief_State_env = Belief_State_env*Belief_Mask_env
         Belief_State_env = Belief_State_env/np.sum(Belief_State_env)
 
         # Compute error for the current belief states
@@ -632,29 +520,6 @@ def calculateError(env, modelTransitionProbs, T, gammas):
         Belief_State_mod = Belief_State_mod/np.sum(Belief_State_mod)
         Belief_State_env = Belief_State_env*Belief_Mask_env
         Belief_State_env = Belief_State_env/np.sum(Belief_State_env)
-
-        # if np.sqrt(error_vector.dot(error_vector)) >= prev_error:
-            # print("Obs_Belief_Mask_mod")
-            # print(Obs_Belief_Mask_mod)
-            # print("Obs_Belief_Mask_env")
-            # print(Obs_Belief_Mask_env)
-            # print("Belief_State_mod")
-            # print(Belief_State_mod)
-            # print("Obs_Probs_mod")
-            # print(Obs_Probs_mod)
-            # print("Belief_State_env")
-            # print(Belief_State_env)
-            # print("Obs_Probs_env")
-            # print(Obs_Probs_env)
-            # print("np.dot(Obs_Probs_mod, Belief_State_mod)")
-            # print(np.dot(Obs_Probs_mod, Belief_State_mod))
-            # print("np.dot(Obs_Probs_env, Belief_State_env)")
-            # print(np.dot(Obs_Probs_env, Belief_State_env))
-            # print("error_vector")
-            # print(error_vector)
-            # print("np.sqrt(error_vector.dot(error_vector))")
-            # print(np.sqrt(error_vector.dot(error_vector)))
-            # print("---------------------")
 
         prev_error = np.sqrt(error_vector.dot(error_vector))
 
@@ -715,7 +580,6 @@ def calculateAbsoluteError(env, modelTransitionProbs):
         # we divide by two so that way each transition diff is normalized to be between 0 and 1
         abs_difference = np.absolute(permutatedEnvTrans - modelTransitionProbs[a_idx,:,:]) / 2
         error = error + np.sum(np.sum(np.sum(abs_difference)))
-        # import pdb; pdb.set_trace()
 
     error = error / (len(env.A_S) * num_of_env_states)
     return error

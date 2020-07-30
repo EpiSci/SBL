@@ -61,9 +61,6 @@ class CollinsModel():
         self.trieHead = TrieNode(None,[])
         for sde in self.env.SDE_Set:
             insertSequence(self.trieHead,sde)
-        # leaves = []
-        # for o in self.env.O_S:
-        #     leaves.append(TrieNode(o,[]))
 
         
         #The instance variable self.env has a current model associated with it. Thus lines 5 through 14 are unecessary (lines 12 and 13 will be addressed below).
@@ -72,10 +69,7 @@ class CollinsModel():
         self.beliefState = [1 if val == firstObservation else 0 for val in sdeFirstObservations]
         self.beliefState = self.beliefState / np.sum(self.beliefState)
         
-        # self.beliefState = np.zeros([len(self.env.SDE_Set)])
-        # self.beliefState[self.env.O_S.index(firstObservation)] = 1
-        
-        # Note: self.TCounts is of shape (a,m,m') and not (m,a,m') for efficiency
+        # Note: self.TCounts is of shape (a,m,m') and not (m,a,m') for consistency
         self.TCounts = np.ones((len(self.env.A_S),len(self.env.SDE_Set),len(self.env.SDE_Set)))
         #Note: using a (a,a',m,m',m'') matrix instead of a counter list for efficiency
         self.OneTCounts = np.ones((len(self.env.A_S),len(self.env.A_S),len(self.env.SDE_Set),len(self.env.SDE_Set),len(self.env.SDE_Set)))
@@ -127,7 +121,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         sha = repo.head.object.hexsha
         c.writerow(["github Code Version (SHA):", sha])
         
-        # Write the training parameters
+        # Write the training parameters into the .csv file
         parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","patience","gainThresh", "insertRandActions","useBudd", "revisedSplitting", "haveControl", "confidence_factor"]
         parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, patience, minGain, insertRandActions, useBudd, revisedSplitting, haveControl, confidence_factor]
 
@@ -298,7 +292,7 @@ def updateModelParameters(model, a, prevOb, nextOb, useBudd):
     # Algorithm 14
     model.beliefState = updateBeliefState(model, model.beliefState, a, nextOb)
     model.beliefHistory.append(copy.deepcopy(model.beliefState))
-    if len(model.beliefHistory) > len(model.actionHistory) + 1: #BUG: I think this should be len(actionHistory) + 1 because you should have one extra belief states than the number of actions. Need to verify this with the algorithms though
+    if len(model.beliefHistory) > len(model.actionHistory) + 1:
         model.beliefHistory.pop(0)
 
 # Algorithm 14: sPOMDP Belief Update
@@ -342,17 +336,6 @@ def smoothBeliefHistory(model, history, beliefHistory):
         for m in range(len(model.env.SDE_Set)):
             total = total + beliefHistory[i][m]
 
-        # if len(model.env.SDE_Set) > 3 and history[0] == "nothing" and history[1] == "west" and history[2] == "goal":
-        #     print("ERROR")
-        #     print(i)
-        #     print(largestMatching)
-        #     print(matching)
-        #     print(beliefHistory[i])
-        #     print("relevant history: ")
-        #     print(history[2*i:])
-        #     print("trie: ")
-            # printTrie(model.trieHead)
-            # exit()
         for m in range(len(model.env.SDE_Set)):
             beliefHistory[i][m] = beliefHistory[i][m] / total
             
@@ -367,21 +350,11 @@ def updateTransitionFunctionPosteriors(model, a, o, useBudd):
         for (mp_idx, m_prime) in enumerate(model.env.SDE_Set):
             # multFactor = int(m_prime[0] == o)
             multFactor = model.beliefHistory[1][mp_idx] #Note: this is an alternative way of calculating multFactor that is supposed to be better in practice. See Section 6.3.4.3 in Collins' dissertation.
-            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx] #Bug?:Should we use beliefHistory[0] if action a corresponds to the beliefHistory[2]?
+            counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
             totalCounts = totalCounts + counts[m_idx][mp_idx]
-    # if len(model.env.SDE_Set) > 3:
-    #     print(model.beliefHistory[0])
-    #     print(totalCounts)
-    #     print(model.beliefHistory[1])
-    #     print(dirichlet.mean(model.TCounts[a_index, m_idx, :]))
-    #     print(counts)
-    #     exit()
+
     if useBudd:
-        # max_row = np.argmax(np.max(Belief_Count, axis=1))
         max_rows = np.argwhere(np.array(model.beliefHistory[0]) == np.amax(np.array(model.beliefHistory[0])))
-        # print("COUNTS")
-        # print(counts)
-        # print(totalCounts)
         if max_rows.size != 1:
             counts[:,:] = 0
         else:
@@ -432,9 +405,6 @@ def updateOneStepFunctionPosteriors(model, history, useBudd):
     if useBudd:
         max_rows = np.argwhere(np.array(model.beliefHistory[0]) == np.amax(np.array(model.beliefHistory[0])))
         max_rows2 = np.argwhere(np.array(model.beliefHistory[1]) == np.amax(np.array(model.beliefHistory[1])))
-        # print("COUNTS")
-        # print(counts)
-        # print(totalCounts)
         if max_rows.size != 1 or max_rows2.size != 1:
             counts[:,:,:] = 0
         else:
@@ -442,19 +412,6 @@ def updateOneStepFunctionPosteriors(model, history, useBudd):
             max_row2 = max_rows2[0]
             counts[np.arange(len(model.env.SDE_Set)) != max_row, np.arange(len(model.env.SDE_Set)) != max_row2, :] = 0
             
-    """ if len(model.env.SDE_Set) > 2 and np.sum(model.OneTCounts) > 10000 and a == "east" and o == "nothing" and a_prime == "east" and o_prime == "nothing" and counts[1,1,1] > 0:
-        print(history)
-        print(counts)
-        print(totalCounts)
-        print(model.beliefHistory[0])
-        print(model.beliefHistory[1])
-        print(model.beliefHistory[2])
-        print(a_index)
-        print(ap_index)
-        print(model.OneTCounts)
-        exit()"""
-
-    
     for m in range(len(model.env.SDE_Set)):
         for mp in range(len(model.env.SDE_Set)):
             for mdp in range(len(model.env.SDE_Set)):
@@ -471,8 +428,6 @@ def trySplit(model, revisedSplitting):
     mTrajLengths = [len(sde) for sde in model.env.SDE_Set]
     sortedIndexes = sorted(range(len(mTrajLengths)),key=mTrajLengths.__getitem__)
     for length in set(mTrajLengths):
-        # firstIndexOfLength = sortedIndexes.index(length)
-        # lastIndexOfLength = sortedIndexes[::-1].index(length) # Returns the index of the last model state m that has this length of trajectory
         tripletStorage = []
         gainStorage = []
         for m in [i for i in sortedIndexes if mTrajLengths[i] == length]:
@@ -484,14 +439,6 @@ def trySplit(model, revisedSplitting):
         for index in sortedGainIndexes[::-1]: # Note: using the reverse of the list since sorted goes in ascending order of the gains
             G.append(tripletStorage[index])
         
-    # for m in sortedIndexes:
-    #     # Sort the actions in decreasing order with respect to the associated gain
-    #     gainsPerAction = [G_ma[a][m] for a in range(len(model.env.A_S))]
-    #     gainsPerAction = gainsPerAction[::-1] #inverse the list since the previous line sorts from smallest to largest and we want the largest gain first
-    #     sortedActions = sorted(range(len(model.env.A_S)),key=gainsPerAction.__getitem__)
-    #     for a in range(len(model.env.A_S)):
-    #         G.append(((model.env.SDE_Set[m],model.env.A_S[sortedActions[a]]),G_ma[sortedActions[a]][m]))
-
     print("G")
     print(G)
     for gs in G:
@@ -500,7 +447,6 @@ def trySplit(model, revisedSplitting):
         gainValue = gs[1]
 
         if revisedSplitting:
-            # matching = largestConsistentSequence(model.trieHead,[state[0], action])
             firstOb = [sde[0] for sde in model.env.SDE_Set]
             skipGainPair = False
             for (obNum, ob) in enumerate(firstOb):
@@ -554,7 +500,7 @@ def trySplit(model, revisedSplitting):
                 model.env.SDE_Set.append(newOutcome2)
                 model.env.SDE_Set.remove(state)
                 
-                # Due to an issue in Collins pseudocode, the inserted SDEs are not gauranteed to correctly replace the older SDEs. Thus, if we are removing an SDE, it is best to rebuild the trie
+                # Due to an issue in Collins pseudocode, the inserted SDEs are not guaranteed to correctly replace the older SDEs. Thus, if we are removing an SDE, it is best to rebuild the trie
                 model.trieHead = TrieNode(None,[])
                 for sde in model.env.SDE_Set:
                     insertSequence(model.trieHead, sde)
@@ -589,14 +535,9 @@ def computeGains(model):
             w_masum = 0
             for m in range(len(model.env.SDE_Set)):
                 for a in range(len(model.env.A_S)):
-                    # w_ma = (dirichlet.mean(model.TCounts[a, m, :])[mp])
                     w_ma = mSinglePrimeSum[a, m, mp] / mPrimeSum[mp]
                     w_masum = w_masum + w_ma
                     sum = sum + (w_ma * entropy((dirichlet.mean(model.OneTCounts[a, ap, m, mp, :])), base=len(model.env.SDE_Set)))
-                    # print("mp: " + str(model.env.SDE_Set[mp]) + " ap: " + str(model.env.A_S[ap]) + " m: " + str(model.env.SDE_Set[m]) + " a: " + str(model.env.A_S[a]) + " w_ma " + str(w_ma) + " Entropy: " + str(entropy((dirichlet.mean(model.OneTCounts[a, ap, m, mp, :])), base=len(model.env.SDE_Set))) + " OneTCounts " + str(model.OneTCounts[a,ap,m,mp,:]) + " Summation subterm: " + str(w_ma * entropy((dirichlet.mean(model.OneTCounts[a, ap, m, mp, :])), base=len(model.env.SDE_Set))))
-            # print("mp: " + str(model.env.SDE_Set[mp]) + " ap: " + str(model.env.A_S[ap]))
-            # print("Entropy: " + str(entropy((dirichlet.mean(model.TCounts[ap, mp, :])), base=len(model.env.SDE_Set))))
-            # print("Right term summation: " + str(sum))
             G[ap][mp] = entropy((dirichlet.mean(model.TCounts[ap, mp, :])), base=len(model.env.SDE_Set)) - sum
     return G
 
@@ -614,27 +555,19 @@ def haveControlPolicy(model, prevObservation, confidence_factor, performed_exper
     import warnings
     warnings.filterwarnings('error')
 
-    # print(len(Informed_Transition))
-    # print(Transition_Idx)
     #<<New Work: Controlling the agent while generating the trajectory. This allows the agent to prioritize performing transitions it has yet to confidently learn>>
 
     new_Full_Transition = []
     transitionProbs = calcTransitionProbabilities(model)
 
     # perform localization if unsure of where we are
-    # Current_Observation = prevObservation
-    # print(prevObservation)
     nonzero_values = np.count_nonzero(model.beliefState)
-    # TODO: get rid of hardcoded value for the entropy
     if performed_experiment is True or (nonzero_values > 1 and entropy(model.beliefState, base=nonzero_values) > localization_threshold):
-        # print("localizing")
         Matching_SDE = model.env.get_SDE(prevObservation)
         Chosen_SDE = np.array(Matching_SDE[np.random.randint(low = 0, high = len(Matching_SDE))])
         Chosen_SDE_Actions = Chosen_SDE[np.arange(start=1, stop = len(Chosen_SDE), step= 2, dtype=int)]
         for action in Chosen_SDE_Actions:
-            # Current_Observation = model.env.step(action)
             new_Full_Transition.append(action)
-            # new_Full_Transition.append(Current_Observation)
 
         if performed_experiment is True:
             # now need to get ourselves to a random state (in case there's latent states)
@@ -643,7 +576,6 @@ def haveControlPolicy(model, prevObservation, confidence_factor, performed_exper
             for action in rand_actions:
                 new_Full_Transition.append(action)
             performed_experiment = False
-            # print("performing random actions")
 
 
     else:  # try to perform experiments so that we learn what we don't know
@@ -654,11 +586,8 @@ def haveControlPolicy(model, prevObservation, confidence_factor, performed_exper
 
             if np.sum(model.TCounts[action_idx, current_state])  / len(model.env.SDE_Set) < confidence_factor:
                 action = model.env.A_S[action_idx]
-                # Current_Observation = model.env.step(action)
                 new_Full_Transition.append(action)
-                # new_Full_Transition.append(Current_Observation)
                 performed_experiment = True
-                # print("experiment performed: took action " + str(action) + " from state " + str(current_state))
                 break
 
         # if not in a state of interest, try to go to a state of interest
@@ -693,10 +622,6 @@ def getPathToExperiment(model, transitionProbs, current_state, confidence_factor
     depth = 1
     bestNode = None
     while depth <= max_depth:
-        # print(depth)
-        # import pdb; pdb.set_trace()
-        # if depth == 2:
-        #     import pdb; pdb.set_trace()
         added_nodes = []
         for node in prev_lvl_nodes:
 
@@ -713,8 +638,6 @@ def getPathToExperiment(model, transitionProbs, current_state, confidence_factor
                 new_actions.append(a)
                 new_probability = np.amax(row)*node.probability
                 if confidences[action_idx, m_idx] >= confidence_factor:
-                    # print("transition had confidence")
-                    # print(row)
                     nonzero_values = np.count_nonzero(row)
                     # if there's only one max and it's by a decent amount, set that to 1
                     if nonzero_values == 1 or (nonzero_values > 1 and entropy(row, base=nonzero_values) < localization_threshold):
@@ -729,8 +652,6 @@ def getPathToExperiment(model, transitionProbs, current_state, confidence_factor
                 else:  # need to do experimentation
                     reward = confidences[action_idx, m_idx] / (confidence_factor - 1)
                     reward = reward * node.probability
-                    # print("-----")
-                    # print(confidences[action_idx, m_idx])
                     added_nodes.append(Node(str(np.argmax(row)), parent=node, reward=reward, probability=new_probability, actions=new_actions))
                     if bestNode is None or reward > bestNode.reward:
                         bestNode = added_nodes[-1]
@@ -740,16 +661,6 @@ def getPathToExperiment(model, transitionProbs, current_state, confidence_factor
         prev_lvl_nodes = added_nodes
         depth = depth + 1
 
-    # if(len(model.env.SDE_Set) == 4):
-    #     draw = True
-    #     levels = [[node for node in children] for children in LevelOrderGroupIter(root)]
-    #     level = levels[1]
-    #     for n in level:
-    #         if n.reward != 0:
-    #             draw = False
-    #             break
-    #     if draw is True:
-    #         drawGraph(model, root, bestNode)
     if bestNode is None:  # never found a place to do an experiment from
         return None
     else:
@@ -791,11 +702,9 @@ def drawGraph(model, root, bestNode):
         return toReturn
     
     UniqueDotExporter(root, edgeattrfunc=edgeattrfunc, nodeattrfunc=nodeattrfunc).to_dotfile("Test2_graph.dot")
-    # UniqueDotExporter(root, edgeattrfunc=lambda n, child: 'label="%s"' % (child.actions)).to_dotfile("Test2_graph.dot")
     cmd = ["dot", "-Tpng", "Test2_graph.dot", "-o", "Test2_graph.png"]
     check_call(cmd)
 
-    # UniqueDotExporter(root).to_picture("Test2_graph.png")
     img=mpimg.imread("Test2_graph.png")
     imgplot = plt.imshow(img)
     plt.show()
