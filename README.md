@@ -4,7 +4,7 @@ This is the code repository for Autonomous sPOMDP Environment Modeling With Part
 
 ## Generating Data
 
-To generate data, run
+To generate data, open a terminal and run
 > `python test.py`
 
 in the home directory. Generated data is printed to `.csv` files in the Testing Data directory. To specify which experiment to run, the `main()` function in `test.py` can be modified. The following lists which variables can be modified to specify the test:
@@ -38,5 +38,7 @@ Graphs can be generated using data already present in the repository (in the *Te
 
 First ensure that the correct data is present in the appropriately labelled subdirectories within the *Testing Data* directory. For example, if you are interested in generating a graph for the Invalid SDE splitting, then make sure the raw `.csv` data files are present in the `Testing Data/Test3_v1` and `Testing Data/Test3_v3` directories.
 
+Next select which test to generate data for. The `generateGraphs.py` file has been formatted to facilitate this process. In the `main()` function, uncomment the test you would like to generate graphs for.
 
-TODO: Add details for how to modify the generateGraphs.py file and then how to run the file
+Finally, generate the graphs by opening a terminal and running
+> `python generateGraphs.py`
