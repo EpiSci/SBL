@@ -251,7 +251,7 @@ def generateGraphTest2():
             v3Data_stdDev = np.std(v3Data, axis=0)
             xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
-            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "BUDD Without Control")), np.full(np.shape(v2Data[:,0]), "BUDD With Control")))
+            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins with Posterior"), (np.full(np.shape(v1Data[:,0]), "Random Policy")), np.full(np.shape(v2Data[:,0]), "Navigation Policy")))
         else:
             xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
