@@ -17,7 +17,7 @@ in the home directory. Generated data is printed to `.csv` files in the Testing 
 
 - `versionNum`: Which test version to run. Use only the version number (e.g. For version 3, use 3)
   - For Test 1: 1 corresponds to frequency-dependent transition posteriors update equation, 3 corresponds to our proposed frequency-independent transition posteriors update equation
-  - For Test 2:
+  - For Test 2:  1 corresponds to frequency-independent transition posteriors update equation without control, 2 corresponds to frequency-independent transition posteriors update equation with control, 3 corresponds to frequency-dependent transition posteriors update equation without control
   - For Test 3: 1 corresponds to previous SDE generation algorithms, 3 corresponds to our proposed SDE generation algorithm with "safety checks"
 
 - `envNum`: The testing environment to test on
