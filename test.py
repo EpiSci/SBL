@@ -26,103 +26,103 @@ def writeNumpyMatrixToCSV(c, matrix):
 
 #Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method)
 def test1_v1(filename,env):
-    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split
     numActionsPerExperiment = 25000
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
-    useBudd = False
+    useUpdatedPosterior = False
     revisedSplitting = False
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useUpdatedPosterior, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
-#Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method) with Budd enabled
+#Uses the Test 1 parameters outlined in the SBLTests.docx file with column updates (Collins' method) with the updated posterior function enabled
 def test1_v3(filename,env):
-    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split
     numActionsPerExperiment = 25000
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
-    useBudd = True
+    useUpdatedPosterior = True
     revisedSplitting = False
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useUpdatedPosterior, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with random actions (no agent control)
 def test2_v1(filename,env):
     haveControl = False
     confidenceFactor = 250
-    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split
     numActionsPerExperiment = 75000
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
-    useBudd = True
+    useUpdatedPosterior = True
     revisedSplitting = False
     localization_threshold = 0.75
-    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useUpdatedPosterior, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v2(filename,env):
     haveControl = True
     confidenceFactor = 250
-    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split
     numActionsPerExperiment = 75000
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
-    useBudd = True
+    useUpdatedPosterior = True
     revisedSplitting = False
     localization_threshold = 0.75
-    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useUpdatedPosterior, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 #Uses the Test 2 parameters outlined in the SBLTests.docx file with agent control
 def test2_v3(filename,env):
-    useBudd = False
+    useUpdatedPosterior = False
     haveControl = False
     confidenceFactor = 250
-    gainThresh = 0.01 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    gainThresh = 0.01 #Threshold of gain to determine if the model should split
     numActionsPerExperiment = 75000
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
     revisedSplitting = False
     localization_threshold = 0.75
-    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useUpdatedPosterior, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with Collins' method of SDE splitting
 def test3_v1(filename,env):
-    gainThresh = 0.05 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    gainThresh = 0.05 #Threshold of gain to determine if the model should split
     numActionsPerExperiment = 25000
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
-    useBudd = False
+    useUpdatedPosterior = False
     revisedSplitting = False
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useUpdatedPosterior, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
 
 
 #Uses the Test 3 parameters outlined in the SBLTests.docx file with improved SDE splitting
 def test3_v3(filename,env):
-    gainThresh = 0.05 #Threshold of gain to determine if the model should split (equivalent to surpriseThresh in budd.py)
+    gainThresh = 0.05 #Threshold of gain to determine if the model should split
     numActionsPerExperiment = 25000
     insertRandActions = False
     explore = 0.5 #Note: Since Collins' pseudocode does not insert random actions between SDEs, the default value for this is 0.5 (as suggested in the dissertation) if insertRandActions is not enabled. Otherwise use 0.05
     patience = 0
-    useBudd = True
+    useUpdatedPosterior = True
     revisedSplitting = True
     haveControl = False
     confidenceFactor = None
     localization_threshold = 0.75
-    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useBudd, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
+    spomdp.psblLearning(env, numActionsPerExperiment, explore,patience,gainThresh, insertRandActions, True, filename, useUpdatedPosterior, revisedSplitting, haveControl, confidenceFactor, localization_threshold)
     
 if __name__ == "__main__":
 

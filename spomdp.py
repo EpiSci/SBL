@@ -101,7 +101,7 @@ class CollinsModel():
         
 
 # Algorithm 10: PSBL Learning of SPOMDP Models
-def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useBudd, revisedSplitting, haveControl, confidence_factor, localization_threshold):
+def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, writeToFile, filename,useUpdatedPosterior, revisedSplitting, haveControl, confidence_factor, localization_threshold):
 
     prevOb = env.reset()
     model = CollinsModel(env,prevOb,minGain)
@@ -122,8 +122,8 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
         c.writerow(["github Code Version (SHA):", sha])
         
         # Write the training parameters into the .csv file
-        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","patience","gainThresh", "insertRandActions","useBudd", "revisedSplitting", "haveControl", "confidence_factor"]
-        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, patience, minGain, insertRandActions, useBudd, revisedSplitting, haveControl, confidence_factor]
+        parameterNames = ["Environment Observations","Environment Actions","alpha","epsilon", "numActions","explore","patience","gainThresh", "insertRandActions","useUpdatedPosterior", "revisedSplitting", "haveControl", "confidence_factor"]
+        parameterVals = [model.env.O_S, model.env.A_S, model.env.Alpha, model.env.Epsilon, numActions, explore, patience, minGain, insertRandActions, useUpdatedPosterior, revisedSplitting, haveControl, confidence_factor]
 
         c.writerow(parameterNames)
         c.writerow(parameterVals)
@@ -193,7 +193,7 @@ def psblLearning(env, numActions, explore, patience,minGain, insertRandActions, 
             action = policy.pop(0)
             nextOb = model.env.step(action)
             # Algorithm 13:
-            updateModelParameters(model, action, prevOb, nextOb, useBudd)
+            updateModelParameters(model, action, prevOb, nextOb, useUpdatedPosterior)
             prevOb = nextOb
         if genTraj:
             np.save("Testing Data/traj" + str(modelNum) + ".npy",traj)
@@ -271,7 +271,7 @@ def computeSurprise(model):
 
 
 #Algorithm 13: Update sPOMDP Model Parameters
-def updateModelParameters(model, a, prevOb, nextOb, useBudd):
+def updateModelParameters(model, a, prevOb, nextOb, useUpdatedPosterior):
     model.actionHistory.append(a)
     model.observationHistory.append(nextOb)
     history = [val for pair in zip(model.observationHistory,model.actionHistory) for val in pair]
@@ -283,9 +283,9 @@ def updateModelParameters(model, a, prevOb, nextOb, useBudd):
         model.beliefHistory = smoothBeliefHistory(model,history, model.beliefHistory)
         # Algorithm 16
         # updateTransitionFunctionPosteriors(model, a, nextOb)
-        updateTransitionFunctionPosteriors(model, model.actionHistory[0], model.observationHistory[1],useBudd)
+        updateTransitionFunctionPosteriors(model, model.actionHistory[0], model.observationHistory[1],useUpdatedPosterior)
         # Algorithm 17
-        updateOneStepFunctionPosteriors(model, history, useBudd)
+        updateOneStepFunctionPosteriors(model, history, useUpdatedPosterior)
         model.actionHistory.pop(0)
         model.observationHistory.pop(0)
 
@@ -342,7 +342,7 @@ def smoothBeliefHistory(model, history, beliefHistory):
     return beliefHistory
 
 #Algorithm 16: Transition Function Posteriors Update
-def updateTransitionFunctionPosteriors(model, a, o, useBudd):
+def updateTransitionFunctionPosteriors(model, a, o, useUpdatedPosterior):
     a_index = model.env.A_S.index(a)
     counts = np.zeros([len(model.beliefState),len(model.beliefState)])
     totalCounts = 0
@@ -353,7 +353,7 @@ def updateTransitionFunctionPosteriors(model, a, o, useBudd):
             counts[m_idx][mp_idx] = multFactor * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
             totalCounts = totalCounts + counts[m_idx][mp_idx]
 
-    if useBudd:
+    if useUpdatedPosterior:
         max_rows = np.argwhere(np.array(model.beliefHistory[0]) == np.amax(np.array(model.beliefHistory[0])))
         if max_rows.size != 1:
             counts[:,:] = 0
@@ -382,7 +382,7 @@ def updateTransitionFunctionPosteriors(model, a, o, useBudd):
     #Note: Not necessary to do updateTransitionProbabilities (Algorithm 12) since this is handled by the dirichlet distributions
 
 # Algorithm 17: One Step Transition Function Posteriors Update
-def updateOneStepFunctionPosteriors(model, history, useBudd):
+def updateOneStepFunctionPosteriors(model, history, useUpdatedPosterior):
     o = history[0]
     a = history[1]
     o_prime = history[2]
@@ -402,7 +402,7 @@ def updateOneStepFunctionPosteriors(model, history, useBudd):
                 counts[m_idx][mp_idx][mdp_idx] = multFactor1 * multFactor2 * (dirichlet.mean(model.TCounts[ap_index, mp_idx, :])[mdp_idx]) * (dirichlet.mean(model.TCounts[a_index, m_idx, :])[mp_idx]) * model.beliefHistory[0][m_idx]
                 totalCounts = totalCounts + counts[m_idx][mp_idx][mdp_idx]
 
-    if useBudd:
+    if useUpdatedPosterior:
         max_rows = np.argwhere(np.array(model.beliefHistory[0]) == np.amax(np.array(model.beliefHistory[0])))
         max_rows2 = np.argwhere(np.array(model.beliefHistory[1]) == np.amax(np.array(model.beliefHistory[1])))
         if max_rows.size != 1 or max_rows2.size != 1:

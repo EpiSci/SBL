@@ -37,9 +37,6 @@ def generateGraphTest1(useFirstPoint,genAbsoluteError):
             files = glob.glob("./Testing Data/Test1_v" + str(versionNum) + "/Test" + str(1) + "_v" + str(versionNum) + "_env" + str(env_num) + "*.csv")
             if len(files) == 0:
                 continue
-            # firstFile = files[0]
-            # env = re.search("env\d+", firstFile).group()
-            # env_num = env[len("env"):]
             data = []
             if versionNum == 1:
                 data = v1Data
@@ -115,14 +112,10 @@ def generateGraphTest1(useFirstPoint,genAbsoluteError):
         plt.figure(figure_num)
         figure_num = figure_num + 1
 
-        # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
         if v1Data.size > 0: # Check to make sure at least one trial was successful
-            # "#0B00AB"
             plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor=colors[0],label="Freq. Dep.\nPosterior Update",color=colors[0],markersize=14,capsize=8)
         
-        # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
         if v2Data.size > 0:
-            # "#BD6800"
             plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor=colors[1],label="Freq. Ind.\nPosterior Update",color=colors[1],markersize=14,capsize=8)
         for num in range(len(model_splits)):
             split = model_splits[num]
@@ -259,7 +252,7 @@ def generateGraphTest2():
             v3Data_stdDev = np.std(v3Data, axis=0)
             xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
-            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins"), (np.full(np.shape(v1Data[:,0]), "BUDD Without Control")), np.full(np.shape(v2Data[:,0]), "BUDD With Control")))
+            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins with Posterior"), (np.full(np.shape(v1Data[:,0]), "Random Policy")), np.full(np.shape(v2Data[:,0]), "Navigation Policy")))
         else:
             xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
@@ -310,11 +303,6 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
         validCount = 0
         totalCount = 0
         for filename in files:
-            # env = re.search("env\d+", filename).group()
-            # env_num = env[len("env"):]
-            # if(str(env_num) != str(environmentNum)):
-            #     continue
-            # find the returned model num
             totalCount = totalCount + 1
             finalModelNum = -1
             isValidSplitTrial = False
@@ -383,12 +371,10 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
         v2Data_average = np.mean(v2Data, axis=0)
         v2Data_stdDev = np.std(v2Data, axis=0)
     
-    # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
     if v1Data.size > 0: # Check to make sure at least one trial was successful
         print(v1Data_average.size)
         plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="Collins et al. Policy",c=colors[0])
     
-    # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
     if v2Data.size > 0:
         plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="Proposed Navigation Policy",c=colors[1])
     for row_num in range(len(model_splits)):
@@ -410,13 +396,6 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
                 plt.axvline(x=split, color=color, label= grouping + "\nModel Split", linestyle=linestyle)
             else:
                 plt.axvline(x=split, color=color, linestyle=linestyle)
-
-    # plt.rcParams.update({'font.size': 18})
-    # plt.rcParams.update({'axes.titlesize': 18})
-    # parameters = {'font.size': 16,
-    #   'xtick.labelsize': 20,
-    #   'ytick.labelsize': 20}
-    # plt.rcParams.update(parameters)
 
 
     plt.xlabel("Number of Actions Taken")
@@ -696,12 +675,10 @@ def generateGraphTest3(useFirstPoint,genAbsoluteError):
         plt.figure(figure_num)
         figure_num = figure_num + 1
         
-        # plt.scatter(v1Data_average[:,0], v1Data_average[:,1], label="Collins")
         if v1Data.size > 0: # Check to make sure at least one trial was successful
             print(v1Data_average.size)
             plt.errorbar(v1Data_average[:,0], v1Data_average[:,1],fmt='.',yerr=v1Data_stdDev[:,1],ecolor=colors[0],label="Collins et al. \nSDE Generation",color=colors[0],markersize=10,capsize=5)
         
-        # plt.scatter(v2Data_average[:,0], v2Data_average[:,1], label="BUDD")
         if v2Data.size > 0:
             plt.errorbar(v2Data_average[:,0], v2Data_average[:,1],fmt='.',yerr=v2Data_stdDev[:,1],ecolor=colors[1],label="Revised \nSDE Generation",color=colors[1],markersize=10,capsize=5)
         for num in range(len(model_splits)):
@@ -872,11 +849,6 @@ def getPercentAccurate(environmentNum):
         validCount = 0
         totalCount = 0
         for filename in files:
-            # env = re.search("env\d+", filename).group()
-            # env_num = env[len("env"):]
-            # if(str(env_num) != str(environmentNum)):
-            #     continue
-            # find the returned model num
             totalCount = totalCount + 1
             finalModelNum = -1
             isValidSplitTrial = False
