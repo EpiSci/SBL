@@ -115,7 +115,7 @@ class Example2(sPOMDPModelExample):
         self.O_S = ["diamond", "square"] #Observation Set
         self.A_S = ["x", "y"] #Action Set
         self.State_Size = 4
-        self.Alpha = 0.99
+        self.Alpha = 0.85
         self.Epsilon = 0.99
         sPOMDPNode.O_S = self.O_S
         sPOMDPNode.A_S = self.A_S
@@ -167,7 +167,7 @@ class Example3(sPOMDPModelExample):
         self.O_S = ["rose", "volcano","nothing"] #Observation Set
         self.A_S = ["b", "f", "t"] #Action Set
         self.State_Size = 4
-        self.Alpha = 0.99
+        self.Alpha = 0.85
         self.Epsilon = 0.99
         sPOMDPNode.O_S = self.O_S
         sPOMDPNode.A_S = self.A_S
@@ -224,7 +224,7 @@ class Example4(sPOMDPModelExample):
         self.O_S = ["goal","nothing"] #Observation Set
         self.A_S = ["east", "west"] #Action Set
         self.State_Size = 4
-        self.Alpha = 0.99
+        self.Alpha = 0.9
         self.Epsilon = 0.99
         sPOMDPNode.O_S = self.O_S
         sPOMDPNode.A_S = self.A_S
