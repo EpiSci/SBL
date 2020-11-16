@@ -144,6 +144,7 @@ def generateGraphTest1(useFirstPoint,genAbsoluteError):
         axes.set_ylim([0,axes.get_ylim()[1]])
         axes.set_xlim([0,axes.get_xlim()[1]])
 
+        plt.show()
         plt.savefig("Testing Data/Test1Env" + env_num + errorFile +"ErrorGraph.png", bbox_inches='tight')
 
 
@@ -255,7 +256,7 @@ def generateGraphTest2():
         else:
             xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
             yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
-            groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "Random Policy")), np.full(np.shape(v2Data[:,0]), "Navigation Policy")))
+            groupings = np.concatenate(((np.full(np.shape(v1Data[:,0]), "Collins et al. Policy")), np.full(np.shape(v2Data[:,0]), "Proposed Navigation Policy")))
 
 
         plt.rcParams.update({'font.size': 16})
@@ -271,7 +272,7 @@ def generateGraphTest2():
         xlabels = ['{:,d}'.format(x) for x in ax.get_xticks()]
         ax.set_xticklabels(xlabels)
         ax.tick_params(axis='x')
-        ldg = plt.legend(fontsize=14)
+        ldg = plt.legend(fontsize=11.5)
         ldg.get_frame().set_edgecolor('black')
 
         # plt.show()
@@ -372,10 +373,10 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
     
     if v1Data.size > 0: # Check to make sure at least one trial was successful
         print(v1Data_average.size)
-        plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="Random Policy",c=colors[0])
+        plt.scatter(v1Data_average[:,0], v1Data_average[:,1],label="Collins et al. Policy",c=colors[0])
     
     if v2Data.size > 0:
-        plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="Navigation Policy",c=colors[1])
+        plt.scatter(v2Data_average[:,0], v2Data_average[:,1],label="Proposed Navigation Policy",c=colors[1])
     for row_num in range(len(model_splits)):
         row = model_splits[row_num]
         color = ''
@@ -383,11 +384,11 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
         linestyle = ''
         if row_num == 0:
             color = colors[0]
-            grouping = "Random Policy"
+            grouping = "Collins et al. Policy"
             linestyle = "-"
         else:
             color = colors[1]
-            grouping = "Navigation Policy"
+            grouping = "Proposed Navigation Policy"
             linestyle = "--"
         for num in range(len(row)):
             split = model_splits[row_num][num]
@@ -401,7 +402,7 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
     plt.ylabel("Error")
     ax = plt.gca()
     ax.set_title("Model Error vs. Number of Actions Taken \nFor " + getEnvironmentName(str(environmentNum)))
-    leg = plt.legend(fontsize=14)
+    leg = plt.legend(fontsize=12)
     leg.get_frame().set_edgecolor('black')
 
 
@@ -409,7 +410,355 @@ def generateGraphTest2_2(useFirstPoint,genAbsoluteError, environmentNum):
         ax.set_ylim([0,1])  # make it so that the y axis starts at zero and goes to 1
 
     plt.savefig("Testing Data/Test2_actions.png", bbox_inches='tight')
-    # plt.show()
+    plt.show()
+
+# Generate bar graph for varying alpha values
+def generateGraphTest2_3(numTrialsPerAlpha):
+    # use list and not numpy array since we don't know how many iterations were done
+
+    environments = []
+    files = glob.glob("./Testing Data/Test2_v" + str(2) + "/*.csv")
+
+    for file in files:
+        env = re.search("env\d+", file).group()
+        env_num = env[len("env"):]
+        environments.append(env_num)
+    
+    environments = set(environments)
+
+    figure_num = 1
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+
+    prevAlphaVal = -1
+    holder = []
+    for env_num in environments:
+        v1Data = []
+        v2Data = []
+        v3Data = []
+        v1DataCorrect = []
+        v2DataCorrect = []
+        v3DataCorrect = []
+        model_splits = []
+        for versionNum in range(1, 4):
+            files = glob.glob("./Testing Data/Test2_v" + str(versionNum) + "/Test" + str(2) + "_v" + str(versionNum) + "_env" + str(env_num) + "*.csv")
+            totalTrials = len(files)
+            data = []
+            if versionNum == 1:
+                data = v1Data
+            elif versionNum == 2:
+                data = v2Data
+            else:
+                data = v3Data
+            for filename in files:
+                # find the returned model num
+                finalModelNum = -1
+                isValidSplitTrial = False
+                with open(filename, mode='r') as csv_file:
+                    csv_reader = csv.DictReader(csv_file)
+                    foundFinal = False
+                    for row in csv_reader:
+                        if row['0'] == '*':
+                            foundFinal = True
+                            continue
+                        if foundFinal is True and finalModelNum == -1:
+                            temp = row['0']
+                            finalModelNum = int(temp[len('Model Num '):])
+                        if foundFinal is True and row['0'] == 'Absolute Error:':
+                            absError = float(row['1'])
+                            if absError < 1:
+                                isValidSplitTrial = True
+
+                # if not isValidSplitTrial:
+                #     continue
+                
+                
+                alpha_val = 0   
+                with open(filename, mode='r') as csv_file:
+                    row_number = 0
+                    offset_amount = 0
+                    end_row = float('inf')
+                    csv_reader = csv.DictReader(csv_file)
+                    for row in csv_reader:
+                        if row_number == 2: # This is the row where the alpha value is stored
+                            alpha_val = float(row['2'])
+                            # print(alpha_val)
+                        elif row['0'] == '*': 
+                            end_row = row_number
+                        elif row['0'] == 'Absolute Error:' and row_number > end_row:
+                            absErr = float(row['1'])
+                            # if absErr <= 1:
+                            data.append([alpha_val, absErr])
+                            # if absErr < 1:
+                            #     dataCorrect[alphaNum] = dataCorrect[alphaNum+1]
+
+
+                        row_number = row_number + 1
+                # if alpha_val != prevAlphaVal and prevAlphaVal != -1:
+                #     data.append(np.array(holder))
+                #     holder = []
+                # holder.append([alpha_val, absErr])
+                # prevAlphaVal = alpha_val
+
+                    # if model_num == finalModelNum:
+                    #     data.append([model_num, iteration_num])
+            # data.append(np.array(holder))
+
+
+        v1Data = np.array(v1Data)
+        v2Data = np.array(v2Data)
+        v2Data = v2Data[v2Data[:,0].argsort()] # sort based off of the x values (e.g. the alpha value)
+        v2Data = np.flipud(v2Data)
+
+        ratioDividendv2 = v2Data.copy()
+
+        print(v2Data)
+
+        print(v2Data)
+        v1Data_average = np.mean(v1Data, axis=0)
+        v2Data_average = []
+        for alphaTrial in v2Data:
+            v2Data_average.append(np.mean(alphaTrial, axis=0))
+        v2Data_average = np.array(v2Data_average)
+        
+        # v2Data_average = np.mean(v2Data, axis=0)
+        v1Data_stdDev = np.std(v1Data, axis=0)
+        v2Data_stdDev = []
+        for alphaTrial in v2Data:
+            v2Data_stdDev.append(np.std(alphaTrial, axis=0))
+        v2Data_stdDev = np.array(v2Data_stdDev)
+        # v2Data_stdDev = np.std(v2Data, axis=0)
+        correctLocs2 = v2Data[:,1] < 1
+        v2Accuracy = []
+        i = 0
+        while i < len(v2Data):
+            j = 0
+            alphaSum = 0
+            while j < numTrialsPerAlpha:
+                alphaSum = alphaSum + correctLocs2[i+j]
+                j = j + 1
+            v2Accuracy.append(alphaSum / numTrialsPerAlpha)
+            i = i + numTrialsPerAlpha
+        print(correctLocs2)
+        print(v2Accuracy)
+        v2Accuracy = np.array(v2Accuracy)
+
+        v2Data = np.array([row for row in v2Data if row[1] < 1])
+        print(v2Data)
+        # import pdb; pdb.set_trace()
+        print("-----")
+        print(env_num)
+        # v1_sum = np.sum(v1Data, axis=0)
+        # v2_sum = np.sum(v2Data, axis=0)
+        # # print(v1_sum)
+        # print(v2_sum)
+        # v1_avg = v1_sum / 10
+        # v2_avg = v2_sum / 10
+        # print(v1_avg)
+        # print(v2_avg)
+        # print(v2Data)
+        # print(v2_avg[1] / v1_avg[1])
+
+
+
+        xData = []
+        yData = []
+        groupings = []
+
+        if len(v3Data) > 0 and len(v1Data) > 0:
+            correctLocs1 = v1Data[:,1] < 1
+            v1Accuracy = []
+            i = 0
+            while i < len(v1Data):
+                j = 0
+                alphaSum = 0
+                while j < numTrialsPerAlpha:
+                    alphaSum = alphaSum + correctLocs1[i+j]
+                    j = j + 1
+                v1Accuracy.append(alphaSum / numTrialsPerAlpha)
+                i = i + numTrialsPerAlpha
+            print(v1Accuracy)
+            v1Data = np.array(v1Data)
+            print(v1Data)
+
+            correctLocs3 = v3Data[:,1] < 1
+            v3Accuracy = []
+            i = 0
+            while i < len(v3Data):
+                j = 0
+                alphaSum = 0
+                while j < numTrialsPerAlpha:
+                    alphaSum = alphaSum + correctLocs3[i+j]
+                    j = j + 1
+                v3Accuracy.append(alphaSum / numTrialsPerAlpha)
+                i = i + numTrialsPerAlpha
+            print(v3Accuracy)
+            v3Data = np.array(v3Data)
+            print(v3Data)
+
+            xData = np.concatenate((v3Data[:,0], v1Data[:,0], v2Data[:,0]))
+            yData = np.concatenate((v3Data[:,1], v1Data[:,1], v2Data[:,1]))
+            yDataAccuracy = np.concatenate((v3Accuracy, v1Accuracy, v2Accuracy))
+            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Original Collins et al. Policy"), (np.full(np.shape(v1Data[:,0]), "Collins et al. Policy with Freq. Indep. Updates")), np.full(np.shape(v2Data[:,0]), "Proposed Naviagation Policy")))
+        if len(v3Data) > 0:
+            correctLocs3 = v3Data[:,1] < 1
+            v3Accuracy = []
+            i = 0
+            while i < len(v3Data):
+                j = 0
+                alphaSum = 0
+                while j < numTrialsPerAlpha:
+                    alphaSum = alphaSum + correctLocs3[i+j]
+                    j = j + 1
+                v3Accuracy.append(alphaSum / numTrialsPerAlpha)
+                i = i + numTrialsPerAlpha
+            print(v3Accuracy)
+            v3Data = np.array(v3Data)
+            print(v3Data)
+
+            v3Data = np.array(v3Data)
+            print(v3Data)
+
+            xData = np.concatenate((v3Data[:,0], v2Data[:,0]))
+            yData = np.concatenate((v3Data[:,1], v2Data[:,1]))
+            yDataAccuracy = np.concatenate((v3Accuracy, v2Accuracy))
+            groupings = np.concatenate((np.full(np.shape(v3Data[:,0]), "Collins et al. Policy"), np.full(np.shape(v2Data[:,0]), "Proposed Navigation Policy")))
+        elif len(v1Data) > 0:
+            v1Data = v1Data[v1Data[:,0].argsort()] # sort based off of the x values (e.g. the alpha value)
+            v1Data = np.flipud(v1Data)
+            ratioDividendv1 = v1Data.copy()
+
+
+            correctLocs1 = v1Data[:,1] < 1
+            v1Accuracy = []
+            i = 0
+            while i < len(v1Data):
+                j = 0
+                alphaSum = 0
+                while j < numTrialsPerAlpha:
+                    alphaSum = alphaSum + correctLocs1[i+j]
+                    j = j + 1
+                v1Accuracy.append(alphaSum / numTrialsPerAlpha)
+                i = i + numTrialsPerAlpha
+            print(v1Accuracy)
+            v1Accuracy = np.array(v1Accuracy)
+
+            # Parse v1Data and remove any values that have an absolute error of 1
+            v1Data = np.array([row for row in v1Data if row[1] < 1])
+            v1Data = np.array(v1Data)
+            print(v1Data)
+
+
+            xData = np.concatenate((v1Data[:,0], v2Data[:,0]))
+            yData = np.concatenate((v1Data[:,1], v2Data[:,1]))
+            yDataAccuracy = np.concatenate((v1Accuracy, v2Accuracy))
+            groupings = np.concatenate((np.full(np.shape(v1Data[:,0]), "Collins et al. Policy"), np.full(np.shape(v2Data[:,0]), "Proposed Navigation Policy")))
+            groupingsAccuracy = np.concatenate((np.full(np.shape(v1Accuracy), "Collins et al. Policy"), np.full(np.shape(v2Accuracy), "Proposed Navigation Policy")))
+        else:
+            xData = v2Data[:,0]
+            print(xData)
+            yData = v2Data[:,1]
+            groupings = (np.full(np.shape(v2Data[:,0]), "Proposed Navigation Policy"))
+
+        plt.rcParams.update({'font.size': 16})
+
+        plt.figure(figure_num)
+        figure_num = figure_num + 1
+        print(xData)
+        ax = sns.barplot(x=xData, y=yData, hue=groupings, capsize=0.1) 
+
+        uniqeXVals = np.unique(xData)
+
+        plt.xlabel("Alpha Value")
+        plt.ylabel("Error")
+        ax.set_title("Model Transition Probability Error Versus Alpha \nFor " + getEnvironmentName(env_num))
+        # xlabels = ['{:,d}'.format(x) for x in ax.get_xticks()]
+        xlabels = [x for x in uniqeXVals]
+        ax.set_xticklabels(xlabels)
+        ax.tick_params(axis='x')
+        ax.invert_xaxis()
+        ldg = plt.legend(fontsize=11.5)
+        ldg.get_frame().set_edgecolor('black')
+
+        # plt.show()
+        plt.savefig("Testing Data/Test2ErrorAlphaVarying_env" + env_num + ".png", bbox_inches='tight')
+
+        # =========================== Make the histogram plot for accuracy
+        plt.rcParams.update({'font.size': 16})
+        plt.figure(figure_num)
+        figure_num = figure_num + 1
+        xDataAccuracy = (np.unique(xData))
+        xDataAccuracy = np.append(xDataAccuracy, xDataAccuracy)
+        xDataAccuracy = np.flipud(xDataAccuracy)
+        print(xDataAccuracy)
+        print(yDataAccuracy)
+        print(groupingsAccuracy)
+        ax = sns.barplot(x=xDataAccuracy, y=yDataAccuracy, hue=groupingsAccuracy, capsize=0.1) 
+
+        uniqeXVals = np.unique(xData)
+
+        plt.xlabel("Alpha Value")
+        plt.ylabel("Success Rate")
+        ax.set_title("Successful Model Generation Versus Alpha \nFor " + getEnvironmentName(env_num))
+        # xlabels = ['{:,d}'.format(x) for x in ax.get_xticks()]
+        xlabels = [x for x in uniqeXVals]
+        ax.set_xticklabels(xlabels)
+        ax.tick_params(axis='x')
+        ax.invert_xaxis()
+        ldg = plt.legend(fontsize=11.5)
+        ldg.get_frame().set_edgecolor('black')
+
+        # plt.show()
+        plt.savefig("Testing Data/Test2AccuracyAlphaVarying_env" + env_num + ".png", bbox_inches='tight')
+
+        # =========================== Make the plot for success/error plot
+        plt.rcParams.update({'font.size': 16})
+        plt.figure(figure_num)
+        figure_num = figure_num + 1
+        ratioDividend = np.concatenate((ratioDividendv1, ratioDividendv2))
+        ratioDividend = ratioDividend[:,1]
+
+        appendedAccuracy = np.array([])
+        for i in range(len(yDataAccuracy)):
+            appendedAccuracy = np.append(appendedAccuracy, np.repeat(yDataAccuracy[i], yDataAccuracy[i]*10))
+
+        newRatio = []
+        for i in range(len(ratioDividend)):
+            if ratioDividend[i] < 1:
+                newRatio.append(ratioDividend[i])
+        ratioDividend = np.array(newRatio)
+                
+        print("!!!!!!!!!!!")
+        print(appendedAccuracy)
+        print("##########")
+        print(ratioDividend)
+        print("^^^^^^^^^^^^")
+
+        yDataRatio = appendedAccuracy/ratioDividend
+        # yDataRatio[ratioDividend == 1] = 0 # Don't count the trials that have an absolue error of 1
+
+        print(xDataAccuracy)
+        print(yDataRatio)
+        print(groupings)
+        ax = sns.barplot(x=xData, y=yDataRatio, hue=groupings, capsize=0.1) 
+
+        uniqeXVals = np.unique(xData)
+
+        plt.xlabel("Alpha Value")
+        plt.ylabel("(Success Rate) / Error")
+        ax.set_title("Normalized Success Rate and Error Versus Alpha \nFor " + getEnvironmentName(env_num))
+        # xlabels = ['{:,d}'.format(x) for x in ax.get_xticks()]
+        xlabels = [x for x in uniqeXVals]
+        ax.set_xticklabels(xlabels)
+        ax.tick_params(axis='x')
+        ax.set_xlim(-0.5, 3.5)
+        ax.set_ylim(0, 12)
+        ax.invert_xaxis()
+        ldg = plt.legend(fontsize=11.5)
+        ldg.get_frame().set_edgecolor('black')
+
+        # plt.show()
+        plt.savefig("Testing Data/Test2SuccessOverErrorAlphaVarying_env" + env_num + ".png", bbox_inches='tight')
 
 
 def generateGraphTest3(useFirstPoint,genAbsoluteError):
@@ -548,7 +897,7 @@ def generateGraphTest3(useFirstPoint,genAbsoluteError):
         axes.set_ylim([0,axes.get_ylim()[1]])
         axes.set_xlim([0,axes.get_xlim()[1]])
 
-    # plt.show()
+        plt.show()
         plt.savefig("Testing Data/Test3Env" + env_num + errorFile +"ErrorGraph.png", bbox_inches='tight')
 
 
@@ -674,7 +1023,7 @@ def getModelGraph(env_num, SDE_Set, A_S, transitionProbs, filename):
             remove(dotfilename)
         except Exception:
             msg = 'Could not remove temporary file %s' % dotfilename
-
+        
         img=mpimg.imread(filename)
         imgplot = plt.imshow(img)
         plt.show()
@@ -714,7 +1063,7 @@ if __name__ == "__main__":
 
     # Test 1 (Testing Transition Posterior Update Equation)
     # Relative Error
-    generateGraphTest1(False,False)
+    # generateGraphTest1(False,False)
 
     # Test 1 (Testing Transition Posterior Update Equation)
     # Absolute Error
@@ -728,6 +1077,10 @@ if __name__ == "__main__":
     # Test 2 (Testing Agent Autonomous Navigation Algorithm)
     # Scatter Plot for Single Trial Comparison, Shape Environment
     # generateGraphTest2_2(False, False, 2)
+
+    # Test 2 (Testing Agent Autonomous Navigation Algorithm)
+    # Bar Graph for Varying Alpha
+    generateGraphTest2_3(10)
 
 
     # Test 3 (Testing SDE Generation Algorithms)
